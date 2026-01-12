@@ -1,0 +1,327 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Press Start 2P', 'Inter', sans-serif;
+  background: #000000;
+  color: #f2f2f2;
+  line-height: 1.6;
+}
+
+/* AUDIO POPUP */
+.audio-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.audio-popup-content {
+  background: #1a1a1a;
+  padding: 30px 40px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.audio-popup-content p {
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+}
+
+.audio-popup-content button {
+  padding: 10px 25px;
+  margin: 0 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.audio-popup-content button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+#music-btn {
+  display: none;
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 30px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  font-size: 0.9rem;
+}
+
+#music-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* HERO */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #000000;
+}
+
+.hero-content {
+  padding: 60px 20px;
+  text-align: center;
+  animation: fadeInDown 2s ease-in-out;
+}
+
+.hero-content h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.glow-text {
+  margin-top: 12px;
+  opacity: 0.9;
+  font-size: 0.7rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.3),
+    0 0 20px rgba(100, 200, 255, 0.1);
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0% {
+    text-shadow: 
+      0 0 5px rgba(255, 255, 255, 0.2),
+      0 0 10px rgba(100, 200, 255, 0.1);
+  }
+  25% {
+    text-shadow: 
+      0 0 20px rgba(255, 255, 255, 0.8),
+      0 0 30px rgba(100, 200, 255, 0.6),
+      0 0 40px rgba(150, 220, 255, 0.4);
+  }
+  50% {
+    text-shadow: 
+      0 0 5px rgba(255, 255, 255, 0.2),
+      0 0 10px rgba(100, 200, 255, 0.1);
+  }
+  75% {
+    text-shadow: 
+      0 0 25px rgba(255, 255, 255, 0.9),
+      0 0 35px rgba(100, 200, 255, 0.7),
+      0 0 45px rgba(150, 220, 255, 0.5);
+  }
+  100% {
+    text-shadow: 
+      0 0 5px rgba(255, 255, 255, 0.2),
+      0 0 10px rgba(100, 200, 255, 0.1);
+  }
+}
+
+.hero-video-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.8;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* GALLERY */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 60px;
+}
+
+.gallery img {
+  width: 100%;
+  border-radius: 14px;
+  transition: transform 0.4s ease;
+}
+
+.gallery img:hover {
+  transform: scale(1.03);
+}
+
+/* HOME PAGE */
+.home-hero {
+  height: auto;
+}
+
+.home-content {
+  padding: 40px 20px;
+}
+
+.home-video {
+  height: 50vh;
+  min-height: 300px;
+}
+
+/* Kochi page video (smaller like home page) */
+.hero:not(.home-hero) .hero-video-container {
+  height: 50vh;
+  min-height: 300px;
+}
+
+/* LOCATIONS SECTION */
+.locations-section {
+  padding: 80px 40px;
+  background: #000000;
+}
+
+.locations-section h2 {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 50px;
+  letter-spacing: 2px;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.3),
+    0 0 20px rgba(100, 200, 255, 0.1);
+}
+
+.locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.location-card {
+  cursor: pointer;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.location-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 30px rgba(100, 200, 255, 0.3);
+}
+
+.location-image {
+  width: 100%;
+  height: 250px;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+}
+
+.location-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.4s ease;
+}
+
+/* Custom position for Kodaikanal (1st card) */
+.locations-grid .location-card:nth-child(1) .location-image img {
+  object-position: center 55%;
+}
+
+/* Custom position for Varkala (2nd card) */
+.locations-grid .location-card:nth-child(2) .location-image img {
+  object-position: center 50%;
+}
+
+/* Custom position for Kochi (3rd card) */
+.locations-grid .location-card:nth-child(3) .location-image img {
+  object-position: center 85%;
+}
+
+.location-card:hover .location-image img {
+  transform: scale(1.1);
+}
+
+.location-card h3 {
+  padding: 20px;
+  background: #1a1a1a;
+  text-align: center;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.2),
+    0 0 15px rgba(100, 200, 255, 0.1);
+}
+
+/* NAVBAR */
+.navbar {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+}
+
+.nav-home {
+  padding: 10px 15px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.nav-home:hover {
+  background: rgba(255, 255, 255, 0.2);
+  text-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+}
+
+/* VIDEO */
+.video-section {
+  padding: 80px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.video-section video {
+  width: 80%;
+  border-radius: 18px;
+}
+
+/* FOOTER */
+footer {
+  padding: 40px 0;
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
