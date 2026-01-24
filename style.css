@@ -974,7 +974,7 @@ video::-webkit-media-controls-play-button {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 1;
 }
 
