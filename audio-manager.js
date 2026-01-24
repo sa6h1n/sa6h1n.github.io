@@ -1,20 +1,20 @@
 (function () {
-  const AUDIO_KEY = "audioPlaying";
-
   const music = document.getElementById("bg-music");
-  const popup = document.getElementById("audio-popup");
-  const yesBtn = document.getElementById("music-yes");
-  const noBtn = document.getElementById("music-no");
+  if (!music) return;
 
-  const MUSIC_NORMAL = 0.4;
-  const MUSIC_VIDEO = 0.002;
+  /* ===============================
+     MUSIC LEVELS
+     =============================== */
+  const MUSIC_NORMAL = 0.4;   // Home page volume
+  const MUSIC_VIDEO  = 0.002; // Video page volume (very low)
 
   let fadeTimer = null;
 
+  /* ===============================
+     SMOOTH FADE
+     =============================== */
   function fadeVolume(target, duration = 500) {
-    if (!music) return;
-
-    // 🔥 FORCE PLAY BEFORE FADING
+    // Ensure music is playing
     if (music.paused) {
       music.play().catch(() => {});
     }
@@ -33,55 +33,27 @@
         Math.min(1, start + (diff * step) / steps)
       );
 
-      if (step >= steps) clearInterval(fadeTimer);
+      if (step >= steps) {
+        clearInterval(fadeTimer);
+      }
     }, duration / steps);
   }
 
   /* ===============================
-     INITIAL LOAD
+     START MUSIC ON LOAD
      =============================== */
-  const approved = sessionStorage.getItem(AUDIO_KEY);
-
-  if (approved === "true" && music) {
-    popup.style.display = "none";
-    music.volume = MUSIC_NORMAL;
-    music.loop = true;
-    music.play().catch(() => {});
-  }
-
-  if (approved === "false") {
-    popup.style.display = "none";
-  }
+  music.volume = MUSIC_NORMAL;
+  music.loop = true;
+  music.play().catch(() => {});
 
   /* ===============================
-     AUDIO POPUP
-     =============================== */
-  if (yesBtn && noBtn) {
-    yesBtn.addEventListener("click", () => {
-      sessionStorage.setItem(AUDIO_KEY, "true");
-      popup.style.display = "none";
-
-      music.volume = MUSIC_NORMAL;
-      music.loop = true;
-      music.play().catch(() => {});
-    });
-
-    noBtn.addEventListener("click", () => {
-      sessionStorage.setItem(AUDIO_KEY, "false");
-      popup.style.display = "none";
-    });
-  }
-
-  /* ===============================
-     PAGE LEVEL CONTROLS (LOGGED)
+     PAGE-LEVEL CONTROLS
      =============================== */
   window.lowerMusicForVideoPage = function () {
-    console.log("🔉 Lowering music for video page");
     fadeVolume(MUSIC_VIDEO);
   };
 
   window.restoreMusicForHomePage = function () {
-    console.log("🔊 Restoring music for home page");
     fadeVolume(MUSIC_NORMAL);
   };
 })();
