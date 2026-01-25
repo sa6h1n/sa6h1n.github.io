@@ -80,9 +80,9 @@
   </div>
 </section>
 <footer class="site-footer">
-  <div class="footer-left">
+  <div class="footer-left" id="visitor-counter">
     <span class="footer-eye">👁</span>
-    <span class="visitor-count" data-goatcounter-display="visits"></span>
+    <!-- count will be injected here -->
   </div>
 
   <p class="footer-quote">
@@ -428,8 +428,37 @@ function setupVideoScroll() {
 }
     // Load home page on startup
     showHome();
-  </script>
-  <script data-goatcounter="https://sa6h1n.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>    
+ </script>
+
+<script data-goatcounter="https://sa6h1n.goatcounter.com/count"
+        src="//gc.zgo.at/count.js"></script>
+
+<script>
+  var t = setInterval(function () {
+    if (window.goatcounter && window.goatcounter.visit_count) {
+      clearInterval(t);
+
+      window.goatcounter.visit_count({
+        append: '#visitor-counter',
+        path: 'TOTAL',
+        no_branding: true,
+        style: `
+          div {
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin-left: 6px;
+            font-family: 'Allura', cursive;
+            font-size: 16px;
+            color: #ffffff;
+            opacity: 0.9;
+          }
+          #gcvc-for { display: none; }
+          #gcvc-by { display: none; }
+        `
+      });
+    }
+  }, 100);
+</script>
 </body>
 </html>
