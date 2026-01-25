@@ -430,9 +430,6 @@ function setupVideoScroll() {
     showHome();
  </script>
 
-<script data-goatcounter="https://sa6h1n.goatcounter.com/count"
-        src="//gc.zgo.at/count.js"></script>
-
 <script>
   var t = setInterval(function () {
     if (window.goatcounter && window.goatcounter.visit_count) {
@@ -440,21 +437,39 @@ function setupVideoScroll() {
 
       window.goatcounter.visit_count({
         append: '#visitor-counter',
+        type: 'html',
         path: 'TOTAL',
         no_branding: true,
+        attr: {
+          style: 'display:inline-flex;align-items:center;'
+        },
         style: `
           div {
-            background: transparent;
-            border: none;
-            padding: 0;
-            margin-left: 6px;
-            font-family: 'Allura', cursive;
-            font-size: 16px;
-            color: #ffffff;
-            opacity: 0.9;
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            color: #ffffff !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 14px !important;
+            font-weight: 400 !important;
+            opacity: 0.9 !important;
           }
-          #gcvc-for { display: none; }
-          #gcvc-by { display: none; }
+
+          #gcvc-for,
+          #gcvc-by {
+            display: none !important;
+          }
+
+          #gcvc-views {
+            margin-left: 6px !important;
+            color: #ffffff !important;
+          }
         `
       });
     }
