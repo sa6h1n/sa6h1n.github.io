@@ -430,7 +430,17 @@ function setupVideoScroll() {
     // Load home page on startup
     showHome();
   </script>
-<script data-goatcounter="https://sa6h1n.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
+  <script
+  data-goatcounter="https://sa6h1n.goatcounter.com/count"
+  async
+  src="//gc.zgo.at/count.js">
+</script>
+<script>
+  window.addEventListener("load", () => {
+    if (window.goatcounter && window.goatcounter.visit_count) {
+      window.goatcounter.visit_count();
+    }
+  });
+</script>
 </body>
 </html>
