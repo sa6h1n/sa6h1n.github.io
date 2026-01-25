@@ -1893,3 +1893,28 @@ footer p {
     margin-top: 0 !important;
   }
 }
+/* GoatCounter iframe cleanup */
+.goatcounter-frame {
+  border: none;
+  width: 40px;
+  height: 18px;
+  background: transparent;
+  opacity: 0.75;
+  margin-left: 6px;
+  transform: translateY(2px);
+}
+
+/* Footer left alignment */
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Optional: softer look on mobile */
+@media (max-width: 600px) {
+  .goatcounter-frame {
+    opacity: 0.6;
+    transform: translateY(3px);
+  }
+}
