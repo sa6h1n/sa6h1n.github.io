@@ -1943,9 +1943,9 @@ footer p {
   margin-top: 22px;
 
   font-family: 'Press Start 2P', monospace;
-  font-size: 6px;
+  font-size: 8px;
   letter-spacing: 2px;
-   margin-top: 8px;
+   margin-top: 11px;
 
   color: rgb(255, 255, 255);
   opacity: 0.7;
@@ -2194,17 +2194,22 @@ body.inner-page .locations-section {
 .star-near {
   animation-duration: 2.5s;
 }
-@media (max-width: 768px) {
-
   .home-hero .hero-video-container {
-    width: calc(100% - 40px);  /* matches gallery padding */
+    width: calc(100% - 40px);   /* same as gallery cards */
     max-width: none;
 
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 4 / 3;        /* 🔑 MATCHES 1600x1200 */
+    height: auto;
+
     margin: 30px auto 20px;
+    border-radius: 14px;
+    overflow: hidden;
   }
 
   .home-hero .hero-video-container iframe {
-    border-radius: 14px; /* same as gallery cards */
+    width: 100%;
+    height: 100%;
+    object-fit: contain;        /* no crop */
+    border-radius: 14px;
   }
 }
