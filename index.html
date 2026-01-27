@@ -450,6 +450,35 @@ function setupVideoScroll() {
     starNear.style.transform =
       `translate3d(${x}px, ${y}px, 0)`;
   });
-</script>    
+</script> 
+  <script>
+(function () {
+  const container = document.querySelector('.hero-video-container');
+  const iframe = container?.querySelector('iframe');
+
+  if (!iframe) return;
+
+  function setRatio(w, h) {
+    const ratio = w / h;
+    container.style.aspectRatio = `${w} / ${h}`;
+  }
+
+  // 🟢 YouTube iframe
+  iframe.addEventListener('load', () => {
+    try {
+      // Default fallback
+      setRatio(16, 9);
+    } catch (e) {}
+  });
+
+  // 🟢 HTML5 <video> support (future-proof)
+  const video = container.querySelector('video');
+  if (video) {
+    video.addEventListener('loadedmetadata', () => {
+      setRatio(video.videoWidth, video.videoHeight);
+    });
+  }
+})();
+</script>
 </body>
 </html>
