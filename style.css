@@ -2194,3 +2194,17 @@ body.inner-page .locations-section {
 .star-near {
   animation-duration: 2.5s;
 }
+@media (max-width: 768px) {
+
+  .home-hero .hero-video-container {
+    width: calc(100% - 40px);  /* matches gallery padding */
+    max-width: none;
+
+    aspect-ratio: 16 / 9;
+    margin: 30px auto 20px;
+  }
+
+  .home-hero .hero-video-container iframe {
+    border-radius: 14px; /* same as gallery cards */
+  }
+}
