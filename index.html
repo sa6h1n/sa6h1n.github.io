@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sachin | Visual Portfolio</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Allura&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<canvas id="space-intro"></canvas>
+<!-- 🌌 STAR LAYERS -->
+ <body class="inner-page"></body>
+<div class="star-field"></div>
+<div class="star-near"></div>
+
+<!-- ☄️ SHOOTING STARS -->
+<div class="shooting-star"></div>
+<div class="shooting-star small"></div>
+<div id="audio-popup" class="audio-popup intro-popup">
+  <p>Play background music?</p>
+  <button id="music-yes" class="audio-yes">Yes</button>
+<button id="music-no" class="audio-no">Mute</button>
+</div>
+ <!-- TOP EYE BANNER -->
+<div class="eye-bar">
+
+  <!-- Left name -->
+  <div class="eye-name">Sachin</div>
+
+  <!-- Center eyes -->
+  <div class="eyes-wrapper">
+    <div class="eye">
+      <div class="pupil-glow"></div>
+      <div class="pupil"></div>
+    </div>
+    <div class="eye">
+      <div class="pupil-glow"></div>
+      <div class="pupil"></div>
+    </div>
+  </div>
+
+  <!-- Right Instagram -->
+  <a
+    class="insta-link"
+    href="https://www.instagram.com/sac.h1n/"
+    target="_blank"
+    aria-label="Instagram"
+  >
+    <!-- Simple Instagram SVG (no library needed) -->
+    <svg viewBox="0 0 24 24">
+      <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 5.5A4.5 4.5 0 1 0 16.5 12 4.51 4.51 0 0 0 12 7.5zm0 7.3A2.8 2.8 0 1 1 14.8 12 2.8 2.8 0 0 1 12 14.8zM17.8 6.2a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/>
+    </svg>
+  </a>
+
+</div>
+<div class="star-field"></div>
+
+  <audio id="bg-music" loop preload="auto">
+    <source src="assets/audio/minecraft.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <a href="javascript:showHome()" class="nav-home" id="home-btn" style="display:none;">← Home</a>
+  </nav>
+
+  <!-- CONTENT CONTAINER -->
+  <div id="content-container">
+    <!-- Content will be loaded here -->
+  </div>
+  <!-- ABOUT ME SECTION -->
+<section class="about-snow">
+  <div class="snow"></div>
+
+  <div class="about-content">
+    <h2>About Me</h2>
+    <p>
+      I capture places the way they feel to me —  
+      quiet moments, movement, light, and memory.  
+      This space is where I keep them.
+    </p>
+  </div>
+</section>
+<footer class="site-footer">
+  <div class="footer-left">
+    <span class="footer-eye">👁</span>
+    <span id="visitor-count">—</span>
+  </div>
+
+  <p class="footer-quote">
+    <span class="handwrite">Do What You Love</span>
+  </p>
+</footer>
+  
+  <script src="audio-manager.js"></script>
+  <script>
+    // Single page app - load content without reloading page
+    const contentContainer = document.getElementById("content-container");
+    const homeBtn = document.getElementById("home-btn");
+
+    // Home page content
+   function showHome() {
+  homeBtn.style.display = "none";
+
+  if (window.restoreMusicForHomePage) {
+    window.restoreMusicForHomePage();
+  }
+
+  contentContainer.innerHTML = `
+    <!-- HERO HOME -->
+    <header class="hero home-hero">
+
+      <!-- 🔥 3D LOGO VIDEO ONLY -->
+      <video
+        class="hero-logo"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto">
+        <source src="assets/logo.mp4" type="video/mp4">
+        <source src="assets/logo.webm" type="video/webm">
+      </video>
+
+      <!-- SHOWREEL VIDEO -->
+      <div class="hero-video-container home-video showreel-video">
+        <div class="youtube-wrapper">
+          <iframe
+            src="https://www.youtube.com/embed/MCu5oqkAyoo?autoplay=1&mute=1&loop=1&playlist=MCu5oqkAyoo&controls=0&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1"
+            frameborder="0"
+            allow="autoplay; fullscreen"
+            allowfullscreen>
+          </iframe>
+        </div>
+      </div>
+
+    </header>
+
+    <!-- LOCATIONS -->
+    <section class="locations-section">
+      <div class="gallery-header">
+        <div class="floating-header">
+          <h2 class="glass-text">Gallery</h2>
+        </div>
+      </div>
+
+      <div class="gallery-box">
+        <div class="locations-grid">
+          <div class="location-card" onclick="showCity()">
+            <div class="location-image">
+              <img src="assets/photos/photo3.JPG" alt="City">
+              <span class="click-overlay">Click to Open</span>
+            </div>
+            <h3>City Side</h3>
+          </div>
+
+          <div class="location-card" onclick="showBeach()">
+            <div class="location-image">
+              <img src="assets/photos/photo2.jpg" alt="Beach">
+              <span class="click-overlay">Click to Open</span>
+            </div>
+            <h3>Sea Side</h3>
+          </div>
+
+          <div class="location-card" onclick="showHeaven()">
+            <div class="location-image">
+              <img src="assets/photos/photo1.jpg" alt="Heaven">
+              <span class="click-overlay">Click to Open</span>
+            </div>
+            <h3>Hill Side</h3>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIDEO CTA -->
+    <section class="edits-cta" onclick="showEdits()">
+      <div class="edits-content">
+        <h2>Videos</h2>
+        <p>Not perfect ~ Just my favorites</p>
+        <span>Click to Watch</span>
+      </div>
+    </section>
+      `;}
+
+    // City page content
+    function showCity() {
+      homeBtn.style.display = "block";
+      contentContainer.innerHTML = `
+        <!-- HERO -->
+        <header class="hero">
+          <div class="hero-content">
+            <h1>City</h1>
+<p class="glow-text">Where I Belongs</p>
+          </div>
+      <div class="hero-video-container city-video">
+            <iframe
+  src="https://www.youtube.com/embed/b7xGqqR1LSw?autoplay=1&mute=1&loop=1&playlist=b7xGqqR1LSw&controls=0"
+  frameborder="0"
+  allow="autoplay; fullscreen"
+  allowfullscreen>
+</iframe>
+          </div>
+        </header>
+
+        <!-- PHOTO GALLERY -->
+        <section class="gallery">
+          <img src="assets/photos/kochi/kochi1.jpg" alt="kochi">
+          <img src="assets/photos/kochi/kochi2.jpg" alt="kochi">
+          <img src="assets/photos/kochi/kochi3.jpg" alt="kochi">
+        </section>
+
+        <!-- GALLERY SECTION 2 -->
+        <section class="gallery">
+          <img src="assets/photos/kochi/kochi4.jpg" alt="kochi">
+          <img src="assets/photos/kochi/kochi5.jpg" alt="kochi">
+          <img src="assets/photos/kochi/kochi6.jpg" alt="kochi">
+        </section>
+      `;
+      window.scrollTo(0, 0);
+    }
+
+    // Beach page content
+    function showBeach() {
+      homeBtn.style.display = "block";
+      contentContainer.innerHTML = `
+        <!-- HERO -->
+        <header class="hero">
+          <div class="hero-content">
+          <h1>Sea Side</h1>
+<p class="glow-text">Where I Belongs</p>
+          </div>
+      <div class="hero-video-container beach-video">
+            <iframe
+  src="https://www.youtube.com/embed/1ICdzMhiiWA?autoplay=1&mute=1&loop=1&playlist=1ICdzMhiiWA&controls=0"
+  frameborder="0"
+  allow="autoplay; fullscreen"
+  allowfullscreen>
+</iframe>
+          </div>
+        </header>
+
+        <!-- PHOTO GALLERY -->
+        <section class="gallery">
+          <img src="assets/photos/beach/bch1.jpg" alt="varkala">
+          <img src="assets/photos/beach/bch2.jpg" alt="varkala">
+          <img src="assets/photos/beach/bch3.jpg" alt="varkala">
+        </section>
+
+        <!-- GALLERY SECTION 2 -->
+        <section class="gallery">
+          <img src="assets/photos/beach/bch4.jpg" alt="varkala">
+          <img src="assets/photos/beach/bch5.jpg" alt="varkala">
+          <img src="assets/photos/beach/bch6.jpg" alt="varkala">
+        </section>
+      `;
+      window.scrollTo(0, 0);
+    }
+
+   // Heaven page content
+function showHeaven() {
+  homeBtn.style.display = "block";
+  contentContainer.innerHTML = `
+     <!-- HERO -->
+        <header class="hero">
+          <div class="hero-content">
+            <h1>Heaven</h1>
+<p class="glow-text">Where I Belongs</p>
+          </div>
+         <div class="hero-video-container beach-video">
+            <iframe
+  src="https://www.youtube.com/embed/WnojIkGNFgw?autoplay=1&mute=1&loop=1&playlist=WnojIkGNFgw&controls=0"
+  frameborder="0"
+  allow="autoplay; fullscreen"
+  allowfullscreen>
+</iframe>
+      </div>
+    </header>
+
+    <!-- PHOTO GALLERY -->
+    <section class="gallery">
+      <img src="assets/photos/heaven/hev1.jpg" alt="kodaikanal">
+      <img src="assets/photos/heaven/hev.jpg" alt="kodaikanal">
+      <img src="assets/photos/heaven/hev3.jpg" alt="kodaikanal">
+    </section>
+
+    <section class="gallery">
+      <img src="assets/photos/heaven/hev4.jpg" alt="kodaikanal">
+      <img src="assets/photos/heaven/hev5.jpg" alt="kodaikanal">
+      <img src="assets/photos/heaven/hev6.jpg" alt="kodaikanal">
+    </section>
+  `;
+  window.scrollTo(0, 0);
+}
+// Video edits page content
+function showEdits() {
+  homeBtn.style.display = "block";
+
+if (window.lowerMusicForVideoPage) {
+    window.lowerMusicForVideoPage();
+  }
+  contentContainer.innerHTML = `
+    <header class="hero">
+      <div class="hero-content">
+        <h1>Videos</h1>
+        <p class="glow-text">Not perfect ~ Just my favorites</p>
+      </div>
+    </header>
+
+    <section class="video-gallery">
+      <div class="video-card">
+        <video
+          class="edit-video"
+          src="assets/videos/edit1.mp4"
+          poster="assets/thumbs/edit1.jpg"
+          playsinline
+          controls
+          controlslist="nodownload nofullscreen noremoteplayback"
+        ></video>
+      </div>
+
+      <div class="video-card">
+        <video
+          class="edit-video"
+          src="assets/videos/edit2.mp4"
+          poster="assets/thumbs/edit2.jpg"
+          playsinline
+          controls
+          controlslist="nodownload nofullscreen noremoteplayback" 
+        ></video>
+      </div>
+
+      <div class="video-card">
+        <video
+          class="edit-video"
+          src="assets/videos/edit3.mp4"
+          poster="assets/thumbs/edit3.jpg"
+          playsinline
+          controls
+          controlslist="nodownload nofullscreen noremoteplayback"
+        ></video>
+      </div>
+
+      <div class="video-card">
+        <video
+          class="edit-video"
+          src="assets/videos/edit4.mp4"
+          poster="assets/thumbs/edit4.jpg"
+          playsinline
+          controls
+          controlslist="nodownload nofullscreen noremoteplayback"
+        ></video>
+      </div>
+    </section>
+  `;
+
+  setupVideoScroll();
+  window.scrollTo(0, 0);
+}
+
+function setupVideoScroll() {
+  const videos = document.querySelectorAll(".edit-video");
+  if (!videos.length) return;
+
+  let userPaused = false;
+  const DEFAULT_VIDEO_VOLUME = 0.7;
+
+  videos.forEach(video => {
+    video.muted = true;       // required for autoplay
+    video.playsInline = true;
+    video.volume = DEFAULT_VIDEO_VOLUME;
+  });
+
+  videos.forEach((video, index) => {
+
+    video.addEventListener("play", () => {
+      userPaused = false;
+
+      // Pause other videos
+      videos.forEach(v => {
+        if (v !== video) v.pause();
+      });
+
+      // Scroll to active video card
+      video.closest(".video-card").scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    });
+
+    video.addEventListener("pause", () => {
+      // If paused before ending → user intent
+      if (video.currentTime < video.duration - 0.3) {
+        userPaused = true;
+      }
+    });
+
+    video.addEventListener("ended", () => {
+      // 🔁 RESET VIDEO → thumbnail comes back
+      video.pause();
+      video.currentTime = 0;
+      video.load(); // ← THIS restores poster
+
+      if (userPaused) return;
+
+      // Auto-play next video
+      const next = videos[index + 1];
+      if (next) {
+        next.play().catch(() => {});
+      }
+    });
+  });
+
+  // Autoplay first video
+  videos[0].play().catch(() => {});
+
+  // 🔓 Unlock sound + set volume on first interaction
+  const unlock = () => {
+    videos.forEach(video => {
+      video.muted = false;
+      video.volume = DEFAULT_VIDEO_VOLUME;
+    });
+
+    window.removeEventListener("click", unlock);
+    window.removeEventListener("scroll", unlock);
+  };
+
+  window.addEventListener("click", unlock);
+  window.addEventListener("scroll", unlock);
+}
+    // Load home page on startup
+    showHome();
+ </script>
+<script data-goatcounter="https://sa6h1n.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"></script>
+    <script>
+  const starField = document.querySelector('.star-field');
+  const starNear = document.querySelector('.star-near');
+
+  document.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 30;
+    const y = (e.clientY / window.innerHeight - 0.5) * 30;
+
+    starField.style.transform =
+      `translate3d(${x * 0.4}px, ${y * 0.4}px, 0)`;
+
+    starNear.style.transform =
+      `translate3d(${x}px, ${y}px, 0)`;
+  });
+</script> 
+   
+</body>
+</html>
