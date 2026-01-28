@@ -384,3 +384,13 @@ fetch('https://sa6h1n.goatcounter.com/counter/TOTAL.json')
     targetY = y;
   }, { passive: true });
 })();
+
+window.addEventListener("scroll", () => {
+  const scrolled = window.scrollY;
+  const hero = document.querySelector(".home-hero");
+
+  if (!hero) return;
+
+  hero.style.opacity = Math.max(1 - scrolled / 300, 0.6);
+  hero.style.transform = `scale(${1 - scrolled / 2000})`;
+});
