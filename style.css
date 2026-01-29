@@ -2707,3 +2707,37 @@ body.inner-page .video-header-card {
   opacity: 0.75;
   text-align: center;
 }
+* DESKTOP HOME VIDEO — MATCH SECOND IMAGE */
+@media (min-width: 1024px) {
+  .home-hero .hero-video-container {
+    max-width: 960px;
+    aspect-ratio: 21 / 10;  /* 🔥 cinematic, less height */
+    margin-top: 10px;      /* pull closer to text */
+  }
+}
+/* =====================================
+   DESKTOP — HOME ANIMATED HEADING FIX
+   ===================================== */
+@media (min-width: 1024px) {
+
+  /* Whole animated text block */
+  .intro-text {
+    margin-top: -40px;      /* ⬅️ pulls it closer to header */
+    max-width: 460px;       /* ⬅️ tighter like reference */
+  }
+
+  /* Main animated line */
+  .intro-quote {
+    font-size: 0.85rem;     /* ⬅️ smaller than current */
+    line-height: 1.35;
+  }
+
+  /* ~sachin */
+  .intro-name {
+    font-size: 0.55rem;
+    margin-top: 4px;
+  }
+}
+.intro-text {
+  margin-top: -55px;
+}
