@@ -13,13 +13,9 @@
 <body class="home-page">
 
   <canvas id="space-intro"></canvas>
-  
 
-  <!-- 🌌 STAR LAYERS -->
   <div class="star-field"></div>
   <div class="star-near"></div>
-
-  <!-- ☄️ SHOOTING STARS -->
   <div class="shooting-star"></div>
   <div class="shooting-star small"></div>
 
@@ -28,13 +24,9 @@
   <button id="music-yes" class="audio-yes">Yes</button>
 <button id="music-no" class="audio-no">Mute</button>
 </div>
- <!-- TOP EYE BANNER -->
 <div class="eye-bar">
-
-  <!-- Left name -->
   <div class="eye-name">Sachin</div>
 
-  <!-- Center eyes -->
   <div class="eyes-wrapper">
     <div class="eye">
       <div class="pupil-glow"></div>
@@ -46,14 +38,12 @@
     </div>
   </div>
 
-  <!-- Right Instagram -->
   <a
     class="insta-link"
     href="https://www.instagram.com/sac.h1n/"
     target="_blank"
     aria-label="Instagram"
   >
-    <!-- Simple Instagram SVG (no library needed) -->
     <svg viewBox="0 0 24 24">
       <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 5.5A4.5 4.5 0 1 0 16.5 12 4.51 4.51 0 0 0 12 7.5zm0 7.3A2.8 2.8 0 1 1 14.8 12 2.8 2.8 0 0 1 12 14.8zM17.8 6.2a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/>
     </svg>
@@ -65,17 +55,12 @@
   <audio id="bg-music" loop preload="auto">
     <source src="assets/audio/minecraft.mp3" type="audio/mpeg">
   </audio>
-
-  <!-- Navigation -->
   <nav class="navbar">
     <a href="javascript:showHome()" class="nav-home" id="home-btn" style="display:none;">← Home</a>
   </nav>
 
-  <!-- CONTENT CONTAINER -->
   <div id="content-container">
-    <!-- Content will be loaded here -->
   </div>
-  <!-- ABOUT ME SECTION -->
 <section class="about-snow">
   <div class="snow"></div>
 
@@ -101,11 +86,9 @@
   
   <script src="audio-manager.js"></script>
   <script>
-    // Single page app - load content without reloading page
     const contentContainer = document.getElementById("content-container");
     const homeBtn = document.getElementById("home-btn");
 
-    // Home page content
    function showHome() {
   document.body.classList.add("home-page");
   document.body.classList.remove("inner-page");
@@ -188,7 +171,6 @@
     </section>
       `;
 
-  // 🔄 HARD RESET Video CTA (prevents disappearing)
   setTimeout(() => {
     const gif = document.querySelector(".edits-cta");
     if (!gif) return;
@@ -198,7 +180,6 @@
   }, 0);
 }
 
-    // City page content
     function showCity() {
       document.body.classList.remove("home-page");
 document.body.classList.add("inner-page");
@@ -240,8 +221,6 @@ document.body.classList.add("inner-page");
       `;
       window.scrollTo(0, 0);
     }
-
-    // Beach page content
     function showBeach() {
       document.body.classList.remove("home-page");
 document.body.classList.add("inner-page");
@@ -284,7 +263,6 @@ document.body.classList.add("inner-page");
       window.scrollTo(0, 0);
     }
 
-   // Heaven page content
 function showHeaven() {
   document.body.classList.remove("home-page");
 document.body.classList.add("inner-page");
@@ -325,7 +303,7 @@ document.body.classList.add("inner-page");
   `;
   window.scrollTo(0, 0);
 }
-// Video edits page content
+
 function showEdits() {
   document.body.classList.remove("home-page");
   document.body.classList.add("inner-page");
@@ -388,7 +366,7 @@ function setupVideoScroll() {
   const DEFAULT_VIDEO_VOLUME = 0.7;
 
   videos.forEach(video => {
-    video.muted = true;       // required for autoplay
+    video.muted = true;       
     video.playsInline = true;
     video.volume = DEFAULT_VIDEO_VOLUME;
   });
@@ -398,12 +376,10 @@ function setupVideoScroll() {
     video.addEventListener("play", () => {
       userPaused = false;
 
-      // Pause other videos
       videos.forEach(v => {
         if (v !== video) v.pause();
       });
 
-      // Scroll to active video card
       video.closest(".video-card").scrollIntoView({
         behavior: "smooth",
         block: "center"
@@ -411,21 +387,19 @@ function setupVideoScroll() {
     });
 
     video.addEventListener("pause", () => {
-      // If paused before ending → user intent
+  
       if (video.currentTime < video.duration - 0.3) {
         userPaused = true;
       }
     });
 
     video.addEventListener("ended", () => {
-      // 🔁 RESET VIDEO → thumbnail comes back
+  
       video.pause();
       video.currentTime = 0;
-      video.load(); // ← THIS restores poster
+      video.load(); 
 
       if (userPaused) return;
-
-      // Auto-play next video
       const next = videos[index + 1];
       if (next) {
         next.play().catch(() => {});
@@ -433,10 +407,8 @@ function setupVideoScroll() {
     });
   });
 
-  // Autoplay first video
   videos[0].play().catch(() => {});
 
-  // 🔓 Unlock sound + set volume on first interaction
   const unlock = () => {
     videos.forEach(video => {
       video.muted = false;
@@ -451,23 +423,19 @@ function setupVideoScroll() {
   window.addEventListener("scroll", unlock);
 }
 
-// 🎥 Scroll animation — HOME ONLY (SAFE)
 window.addEventListener("scroll", () => {
   const videoCTA = document.querySelector(".edits-cta");
 
-  // 🔒 Only run when Video CTA exists (Home page)
   if (!videoCTA) return;
 
   const rect = videoCTA.getBoundingClientRect();
   const windowH = window.innerHeight;
 
-  // Progress based on visibility
   const progress = Math.min(
     Math.max((windowH - rect.top) / windowH, 0),
     1
   );
 
-  // Apply animation
   videoCTA.style.opacity = 0.6 + progress * 0.4;
   videoCTA.style.transform = `translateY(${20 * (1 - progress)}px) scale(${0.96 + progress * 0.04})`;
 });
@@ -477,7 +445,6 @@ setTimeout(() => {
     window.revealVideoCTA();
   }
 }, 200);
-    // Load home page on startup
     showHome();
  </script>
 <script data-goatcounter="https://sa6h1n.goatcounter.com/count"
