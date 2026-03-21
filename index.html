@@ -12,18 +12,20 @@
   
 <body class="home-page">
 
-  <canvas id="space-intro"></canvas>
-
   <div class="star-field"></div>
   <div class="star-near"></div>
   <div class="shooting-star"></div>
   <div class="shooting-star small"></div>
-
-<div id="audio-popup" class="audio-popup intro-popup">
-  <p>Play background music?</p>
-  <button id="music-yes" class="audio-yes">Yes</button>
-<button id="music-no" class="audio-no">Mute</button>
-</div>
+  <div id="audio-popup" class="audio-popup intro-popup" aria-hidden="true">
+    <div class="audio-popup-card">
+      
+      <p class="audio-popup-title">Play Music?</p>
+      <div class="audio-popup-actions">
+        <button id="music-yes" class="audio-yes" type="button">Play Music</button>
+        <button id="music-no" class="audio-no" type="button">Maybe Later</button>
+      </div>
+    </div>
+  </div>
 <div class="eye-bar">
   <div class="eye-name">Sachin</div>
 
@@ -235,6 +237,7 @@ document.body.classList.add("inner-page");
       <div class="hero-video-container beach-video">
             <iframe
   src="https://www.youtube.com/embed/4vLpzEwqUAg?autoplay=1&mute=1&loop=1&playlist=4vLpzEwqUAg&controls=0&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1"
+  
   frameborder="0"
   allow="autoplay; fullscreen"
   allowfullscreen>
@@ -274,9 +277,9 @@ document.body.classList.add("inner-page");
             <h1>Heaven</h1>
 <p class="glow-text">Where I Belongs</p>
           </div>
-         <div class="hero-video-container beach-video">
+         <div class="hero-video-container heaven-video">
             <iframe
-  src="https://www.youtube.com/embed/WnojIkGNFgw?autoplay=1&mute=1&loop=1&playlist=WnojIkGNFgw&controls=0"
+  src="https://www.youtube.com/embed/44nusj5xKZs?autoplay=1&mute=1&loop=1&playlist=44nusj5xKZs&controls=0"
   frameborder="0"
   allow="autoplay; fullscreen"
   allowfullscreen>
@@ -400,6 +403,8 @@ function setupVideoScroll() {
       video.load(); 
 
       if (userPaused) return;
+
+      // Auto-play next video
       const next = videos[index + 1];
       if (next) {
         next.play().catch(() => {});
