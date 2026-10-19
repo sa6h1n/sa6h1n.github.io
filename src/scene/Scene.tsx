@@ -359,6 +359,14 @@ function Man2({
 
   const mouse = useRef({ x: 0, y: 0 })
   const smouse = useRef({ x: 0, y: 0 })
+  // Body movement
+const bodyRef = useRef<THREE.Group>(null)
+
+const bodyMotion = useRef({
+  rotationX: 0,
+  rotationY: 0,
+  rotationZ: 0,
+})
 
  useEffect(() => {
   const updatePointer = (clientX: number, clientY: number) => {
@@ -431,6 +439,41 @@ function Man2({
   useFrame((_, dt) => {
     const a = 1 - Math.pow(cam.damping, dt)
 
+    
+// Body movement: stronger idle sway + touch-following rotation.
+if (bodyRef.current) {
+  const time = performance.now() * 0.001
+
+  // More visible idle movement
+  const idleX = Math.sin(time * 0.8) * 0.12
+  const idleY = Math.sin(time * 1.2) * 0.06
+  const idleZ = Math.sin(time * 0.65) * 0.07
+
+  // Stronger movement following the finger/mouse
+  const touchGain = isMobile.current ? 2.2 : 1.6
+
+  const targetX = idleX - mouse.current.y * 0.28 * touchGain
+  const targetY = mouse.current.x * 0.32 * touchGain
+  const targetZ = idleZ - mouse.current.x * 0.12 * touchGain
+
+  const smoothing = 1 - Math.exp(-3.5 * dt)
+
+  bodyMotion.current.rotationX +=
+    (targetX - bodyMotion.current.rotationX) * smoothing
+  bodyMotion.current.rotationY +=
+    (targetY - bodyMotion.current.rotationY) * smoothing
+  bodyMotion.current.rotationZ +=
+    (targetZ - bodyMotion.current.rotationZ) * smoothing
+
+  bodyRef.current.rotation.set(
+    bodyMotion.current.rotationX,
+    bodyMotion.current.rotationY,
+    bodyMotion.current.rotationZ,
+  )
+
+  // Gentle up-and-down movement
+  bodyRef.current.position.y = Math.sin(time * 1.4) * 0.06
+}
     if (!anchorEls.current) {
       anchorEls.current = POINTS.map((n) =>
         document.querySelector(`[data-point="${n}"]`),
@@ -855,19 +898,17 @@ function Man2({
     }
   })
 
-  return (
-    <group
-      position={[posX, posY, posZ]}
-      rotation={[
-        0,
-        (rotationY * Math.PI) / 180,
-        0,
-      ]}
-      scale={scale}
-    >
+ return (
+  <group
+    position={[posX, posY, posZ]}
+    rotation={[0, (rotationY * Math.PI) / 180, 0]}
+    scale={scale}
+  >
+    <group ref={bodyRef}>
       <primitive object={model} />
     </group>
-  )
+  </group>
+)
 }
 
 function Post2({
