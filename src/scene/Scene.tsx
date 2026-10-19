@@ -360,21 +360,39 @@ function Man2({
   const mouse = useRef({ x: 0, y: 0 })
   const smouse = useRef({ x: 0, y: 0 })
 
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      mouse.current.x =
-        (e.clientX / window.innerWidth) * 2 - 1
+ useEffect(() => {
+  const updatePointer = (clientX: number, clientY: number) => {
+    mouse.current.x =
+      (clientX / window.innerWidth) * 2 - 1
 
-      mouse.current.y =
-        -((e.clientY / window.innerHeight) * 2 - 1)
-    }
+    mouse.current.y =
+      -((clientY / window.innerHeight) * 2 - 1)
+  }
 
-    window.addEventListener('mousemove', onMove)
+  const onMove = (e: PointerEvent) => {
+    updatePointer(e.clientX, e.clientY)
+  }
 
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-    }
-  }, [])
+  const onTouchMove = (e: TouchEvent) => {
+    const touch = e.touches[0]
+    if (!touch) return
+
+    updatePointer(touch.clientX, touch.clientY)
+  }
+
+  window.addEventListener('pointermove', onMove, {
+    passive: true,
+  })
+
+  window.addEventListener('touchmove', onTouchMove, {
+    passive: true,
+  })
+
+  return () => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('touchmove', onTouchMove)
+  }
+}, [])
 
   const isMobile = useRef(
     typeof window !== 'undefined' &&
@@ -766,13 +784,11 @@ function Man2({
     }
 
     // Preserve the existing desktop eye-follow behavior.
-    if (
-      !eye.enabled ||
-      eyes.length === 0 ||
-      isMobile.current
-    ) {
-      return
-    }
+    if (!eye.enabled || eyes.length === 0) {
+
+  return
+
+}
 
     const sx = eye.invertX ? -1 : 1
     const sy = eye.invertY ? -1 : 1
