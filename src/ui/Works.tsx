@@ -417,9 +417,10 @@ useEffect(() => {
     `${import.meta.env.BASE_URL}hobbies/music/gallery-track.mp3`,
   )
 
-  audio.loop = true
-  audio.preload = 'none'
-  audio.volume = 0
+ audio.loop = true
+audio.preload = 'auto'
+audio.volume = 0
+audio.muted = false
 
   let destroyed = false
   let galleryVisible = false
@@ -474,7 +475,10 @@ useEffect(() => {
       ),
     )
 
-    return Math.min(entering, leaving) * TARGET_VOLUME
+   return Math.max(
+  0,
+  Math.min(entering, leaving) * TARGET_VOLUME,
+)
   }
 
   const fadeTo = (target: number) => {
@@ -591,46 +595,46 @@ useEffect(() => {
   }
 
   // Called directly from the music button's click event.
-  const unlockMusic = () => {
-    if (destroyed) return
+ const unlockMusic = () => {
+  if (destroyed) return
 
-    const rect = gallery.getBoundingClientRect()
+  const rect = gallery.getBoundingClientRect()
 
-    galleryVisible =
-      rect.top < window.innerHeight &&
-      rect.bottom > 0
+  galleryVisible =
+    rect.top < window.innerHeight &&
+    rect.bottom > 0
 
-    if (!galleryVisible) return
+  if (!galleryVisible) return
 
-    // Allow a new attempt after an explicit user click.
-    autoplayAttempted = true
+  autoplayAttempted = true
 
-    cancelFade()
-    audio.volume = 0
-    lastVolumeTarget = -1
+  cancelFade()
 
-    // Do not await anything before calling play().
-    void audio.play()
-      .then(() => {
-        if (destroyed) {
-          audio.pause()
-          return
-        }
+  audio.volume = 0
+  lastVolumeTarget = -1
 
-        setMusicNeedsGesture(false)
-        fadeTo(getDesiredVolume())
-      })
-      .catch((error: unknown) => {
-        if (destroyed) return
+  // Call play immediately inside the user's click interaction.
+  const playPromise = audio.play()
 
-        console.info(
-          'Manual gallery playback failed:',
-          error,
-        )
+  void playPromise
+    .then(() => {
+      if (destroyed) {
+        audio.pause()
+        return
+      }
 
-        setMusicNeedsGesture(true)
-      })
-  }
+      setMusicNeedsGesture(false)
+
+      // Start fading in after playback begins.
+      fadeTo(getDesiredVolume())
+    })
+    .catch((error: unknown) => {
+      if (destroyed) return
+
+      console.info('Manual gallery playback failed:', error)
+      setMusicNeedsGesture(true)
+    })
+}
 
   // Retry a blocked autoplay only after genuine user interaction.
   const onUserInteraction = () => {
