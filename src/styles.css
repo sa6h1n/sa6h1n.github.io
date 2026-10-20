@@ -1858,3 +1858,17 @@ canvas {
   }
 }
 
+.closing-quote {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 9px;
+  line-height: 1.6;
+  text-align: center;
+  color: rgba(245, 239, 230, 0.48);
+  pointer-events: none;
+}
