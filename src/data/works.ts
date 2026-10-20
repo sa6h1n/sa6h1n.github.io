@@ -42,7 +42,7 @@ export interface WorksLang {
 const sections: WorkSection[] = [
   {
     id: 'ad',
-    no: '01',
+    no: '',
     title: 'CitySide',
     tagline: 'CONCRETE JUNGLES & CITY LIGHTS',
     galleryImages: Array.from(
@@ -53,7 +53,7 @@ const sections: WorkSection[] = [
   },
   {
     id: 'maker',
-    no: '02',
+    no: '',
     title: 'After Hours',
     tagline: 'SOUNDTRACK TO MY LIFE',
     galleryImages: Array.from(
@@ -64,7 +64,7 @@ const sections: WorkSection[] = [
   },
   {
     id: 'product',
-    no: '03',
+    no: '',
     title: 'Southbound',
     tagline: 'A LITTLE PIECE OF HOME',
     galleryImages: Array.from(
@@ -75,7 +75,7 @@ const sections: WorkSection[] = [
   },
   {
     id: 'graphics',
-    no: '04',
+    no: '',
     title: 'Off the Grid',
     tagline: 'CHASING PEAKS & QUIET MOMENTS',
     galleryImages: Array.from(
