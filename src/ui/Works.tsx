@@ -108,6 +108,7 @@ function SectionWorks({
                 src={src}
                 alt={`${section.title} photo ${index + 1}`}
                 loading="lazy"
+                decoding="async"
               />
 
               <figcaption>
@@ -383,7 +384,14 @@ function QuoteCard() {
         >
           ✳
         </motion.span>
-        
+        <motion.p
+  className="closing-quote"
+  initial={{ opacity: 0 }}
+  animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+  transition={{ duration: 0.8, delay: 2.2 }}
+>
+  Your life is not yours if you always care about what other people think!
+</motion.p>
       </div>
     </div>
   )
