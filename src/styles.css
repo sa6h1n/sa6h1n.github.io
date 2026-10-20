@@ -940,7 +940,7 @@ canvas {
   letter-spacing: 0.3em;
   color: rgba(244, 241, 234, 0.4);
   font-variant-numeric: tabular-nums;
-  margin-bottom: 3.5em;
+  margin-bottom: 2em;
 }
 
 .wk-card-title {
@@ -953,7 +953,7 @@ canvas {
 }
 .wk-card-tagline {
   display: block;
-  margin-top: 1em;
+  margin-top: 0.5em;
   font-size: clamp(12px, 1.2vw, 14px);
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -1019,7 +1019,7 @@ canvas {
 /* 画廊角标题 / 进度点 / 提示 */
 .wk-gallery-title {
   position: absolute;
-  top: clamp(28px, 6vh, 56px);
+  top: clamp(28px, 3vh, 56px);
   left: clamp(24px, 6vw, 80px);
   z-index: 2;
   font-family: 'Mansalva', cursive;
