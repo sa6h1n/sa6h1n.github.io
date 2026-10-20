@@ -48,7 +48,7 @@ const sections: WorkSection[] = [
     galleryImages: Array.from(
       { length: 6 },
       (_, i) =>
-        `${import.meta.env.BASE_URL}hobbies/hillside/${String(i + 1).padStart(2, '0')}.jpg`
+        `${import.meta.env.BASE_URL}hobbies/hillside/${String(i + 1).padStart(2, '0')}.webp`
     ),
   },
   {
@@ -59,7 +59,7 @@ const sections: WorkSection[] = [
     galleryImages: Array.from(
       { length: 6 },
       (_, i) =>
-        `${import.meta.env.BASE_URL}hobbies/music/${String(i + 1).padStart(2, '0')}.jpg`
+        `${import.meta.env.BASE_URL}hobbies/music/${String(i + 1).padStart(2, '0')}.webp`
     ),
   },
   {
@@ -70,7 +70,7 @@ const sections: WorkSection[] = [
     galleryImages: Array.from(
       { length: 6 },
       (_, i) =>
-        `${import.meta.env.BASE_URL}hobbies/south-side/${String(i + 1).padStart(2, '0')}.jpg`
+        `${import.meta.env.BASE_URL}hobbies/south-side/${String(i + 1).padStart(2, '0')}.webp`
     ),
   },
   {
@@ -81,7 +81,7 @@ const sections: WorkSection[] = [
     galleryImages: Array.from(
       { length: 6 },
       (_, i) =>
-        `${import.meta.env.BASE_URL}hobbies/lens/${String(i + 1).padStart(2, '0')}.jpg`
+        `${import.meta.env.BASE_URL}hobbies/lens/${String(i + 1).padStart(2, '0')}.webp`
     ),
   },
 ]
@@ -118,10 +118,10 @@ export const WORKS: Record<'zh' | 'en', WorksLang> = {
 
 // Section cover images.
 export const SECTION_COVERS: Record<string, string> = {
-  ad: `${import.meta.env.BASE_URL}works/covers/ad.jpg`,
-  maker: `${import.meta.env.BASE_URL}works/covers/maker.jpg`,
-  product: `${import.meta.env.BASE_URL}works/covers/product.jpg`,
-  graphics: `${import.meta.env.BASE_URL}works/covers/graphics.jpg`,
+  ad: `${import.meta.env.BASE_URL}works/covers/ad.webp`,
+  maker: `${import.meta.env.BASE_URL}works/covers/maker.webp`,
+  product: `${import.meta.env.BASE_URL}works/covers/product.webp`,
+  graphics: `${import.meta.env.BASE_URL}works/covers/graphics.webp`,
 }
 
 // Count works in a section.
