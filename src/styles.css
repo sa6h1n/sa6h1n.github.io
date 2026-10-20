@@ -95,7 +95,7 @@ canvas {
   justify-content: flex-end;
   align-items: center;
   /* 标题正文略下移 */
-  padding-bottom: 3vh;
+  padding-bottom: 5vh;
 }
 
 /* 首屏底部渐变底色（滚动后由 framer 控制淡出） */
