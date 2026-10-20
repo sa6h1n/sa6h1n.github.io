@@ -324,7 +324,7 @@ function QuoteCard() {
     once: true,
   })
 
-  const words = ['Be', 'the', 'world', 'you', 'want', 'to', 'have']
+  const words = ['Be', 'the', 'world', 'you', 'want', 'to', 'have !']
 
   return (
     <div
@@ -383,6 +383,7 @@ function QuoteCard() {
         >
           ✳
         </motion.span>
+        
       </div>
     </div>
   )
@@ -407,7 +408,7 @@ export default function Works({
   const unlockMusicRef = useRef<(() => void) | null>(null)
 
 // =========================================================
-// GALLERY BACKGROUND MUSIC — SAFARI + FADE FIX
+// GALLERY BACKGROUND MUSIC — TAB SWITCH + FADE
 // =========================================================
 useEffect(() => {
   const gallery = galleryRef.current
@@ -417,14 +418,16 @@ useEffect(() => {
     `${import.meta.env.BASE_URL}hobbies/music/gallery-track.mp3`,
   )
 
- audio.loop = true
-audio.preload = 'auto'
-audio.volume = 0
-audio.muted = false
+  audio.loop = true
+  audio.preload = 'none'
+  audio.volume = 0
 
   let destroyed = false
   let galleryVisible = false
   let autoplayAttempted = false
+  let manuallyPaused = false
+  let resumeAfterTabSwitch = false
+
   let fadeFrame = 0
   let fadeStartedAt = 0
   let fadeStartVolume = 0
@@ -441,55 +444,35 @@ audio.muted = false
     }
   }
 
-  // Calculate how much of the gallery is entering or leaving
-  // the viewport. This controls the music volume.
+  // Calculate the desired volume from gallery visibility.
   const getDesiredVolume = () => {
     const rect = gallery.getBoundingClientRect()
     const viewportHeight = window.innerHeight
 
-    if (
-      rect.top >= viewportHeight ||
-      rect.bottom <= 0
-    ) {
+    if (rect.top >= viewportHeight || rect.bottom <= 0) {
       return 0
     }
 
-    const fadeDistance = Math.max(
-      240,
-      viewportHeight * 0.6,
-    )
+    const fadeDistance = Math.max(240, viewportHeight * 0.6)
 
     const entering = Math.max(
       0,
-      Math.min(
-        1,
-        (viewportHeight - rect.top) / fadeDistance,
-      ),
+      Math.min(1, (viewportHeight - rect.top) / fadeDistance),
     )
 
     const leaving = Math.max(
       0,
-      Math.min(
-        1,
-        rect.bottom / fadeDistance,
-      ),
+      Math.min(1, rect.bottom / fadeDistance),
     )
 
-   return Math.max(
-  0,
-  Math.min(entering, leaving) * TARGET_VOLUME,
-)
+    return Math.min(entering, leaving) * TARGET_VOLUME
   }
 
   const fadeTo = (target: number) => {
     if (destroyed) return
 
-    target = Math.max(
-      0,
-      Math.min(TARGET_VOLUME, target),
-    )
+    target = Math.max(0, Math.min(TARGET_VOLUME, target))
 
-    // Avoid restarting the same fade on every scroll event.
     if (
       Math.abs(target - lastVolumeTarget) < 0.004 &&
       (fadeFrame !== 0 || Math.abs(audio.volume - target) < 0.004)
@@ -498,7 +481,6 @@ audio.muted = false
     }
 
     lastVolumeTarget = target
-
     cancelFade()
 
     fadeStartVolume = audio.volume
@@ -513,8 +495,7 @@ audio.muted = false
         (now - fadeStartedAt) / FADE_DURATION,
       )
 
-      const eased =
-        progress * progress * (3 - 2 * progress)
+      const eased = progress * progress * (3 - 2 * progress)
 
       audio.volume =
         fadeStartVolume +
@@ -526,10 +507,7 @@ audio.muted = false
         audio.volume = fadeTargetVolume
         fadeFrame = 0
 
-        if (
-          fadeTargetVolume === 0 &&
-          !galleryVisible
-        ) {
+        if (fadeTargetVolume === 0 && !galleryVisible) {
           audio.pause()
         }
       }
@@ -544,30 +522,33 @@ audio.muted = false
     const rect = gallery.getBoundingClientRect()
 
     galleryVisible =
-      rect.top < window.innerHeight &&
-      rect.bottom > 0
+      rect.top < window.innerHeight && rect.bottom > 0
 
-   if (!galleryVisible) {
-  setMusicNeedsGesture(false)
+    if (!galleryVisible) {
+      setMusicNeedsGesture(false)
+      autoplayAttempted = false
+      fadeTo(0)
+      return
+    }
 
-  // Allow autoplay to be attempted again on re-entry.
-  autoplayAttempted = false
+    // Never restart music after a manual pause.
+    if (manuallyPaused) {
+      setMusicNeedsGesture(false)
+      return
+    }
 
-  fadeTo(0)
-  return
-}
+    // Do not start playback while this browser tab is hidden.
+    if (document.hidden) return
 
     if (audio.paused) {
-      // Show the manual button while music is unavailable.
       setMusicNeedsGesture(true)
 
-      // Only one automatic attempt per page load.
       if (!autoplayAttempted) {
         autoplayAttempted = true
 
         void audio.play()
           .then(() => {
-            if (destroyed) {
+            if (destroyed || document.hidden || manuallyPaused) {
               audio.pause()
               return
             }
@@ -578,11 +559,7 @@ audio.muted = false
           .catch((error: unknown) => {
             if (destroyed) return
 
-            console.info(
-              'Gallery autoplay was blocked:',
-              error,
-            )
-
+            console.info('Gallery autoplay was blocked:', error)
             setMusicNeedsGesture(true)
           })
       }
@@ -594,65 +571,59 @@ audio.muted = false
     fadeTo(getDesiredVolume())
   }
 
-  // Called directly from the music button's click event.
- const unlockMusic = () => {
-  if (destroyed) return
+  // Explicit user action to enable or resume music.
+  const unlockMusic = () => {
+    if (destroyed || document.hidden) return
 
-  const rect = gallery.getBoundingClientRect()
+    const rect = gallery.getBoundingClientRect()
 
-  galleryVisible =
-    rect.top < window.innerHeight &&
-    rect.bottom > 0
+    galleryVisible =
+      rect.top < window.innerHeight && rect.bottom > 0
 
-  if (!galleryVisible) return
+    if (!galleryVisible) return
 
-  autoplayAttempted = true
+    manuallyPaused = false
+    autoplayAttempted = true
 
-  cancelFade()
+    cancelFade()
+    audio.volume = 0
+    lastVolumeTarget = -1
 
-  audio.volume = 0
-  lastVolumeTarget = -1
+    void audio.play()
+      .then(() => {
+        if (destroyed || document.hidden || manuallyPaused) {
+          audio.pause()
+          return
+        }
 
-  // Call play immediately inside the user's click interaction.
-  const playPromise = audio.play()
+        setMusicNeedsGesture(false)
+        fadeTo(getDesiredVolume())
+      })
+      .catch((error: unknown) => {
+        if (destroyed) return
 
-  void playPromise
-    .then(() => {
-      if (destroyed) {
-        audio.pause()
-        return
-      }
+        console.info('Manual gallery playback failed:', error)
+        setMusicNeedsGesture(true)
+      })
+  }
 
-      setMusicNeedsGesture(false)
-
-      // Start fading in after playback begins.
-      fadeTo(getDesiredVolume())
-    })
-    .catch((error: unknown) => {
-      if (destroyed) return
-
-      console.info('Manual gallery playback failed:', error)
-      setMusicNeedsGesture(true)
-    })
-}
-
-  // Retry a blocked autoplay only after genuine user interaction.
+  // Retry blocked autoplay after genuine user interaction.
   const onUserInteraction = () => {
     if (
       destroyed ||
+      document.hidden ||
       !galleryVisible ||
-      !audio.paused
+      !audio.paused ||
+      manuallyPaused
     ) {
       return
     }
 
-    // This event can provide Safari's user activation.
-    // The button remains available if playback is still blocked.
     autoplayAttempted = true
 
     void audio.play()
       .then(() => {
-        if (destroyed) {
+        if (destroyed || document.hidden || manuallyPaused) {
           audio.pause()
           return
         }
@@ -661,10 +632,41 @@ audio.muted = false
         fadeTo(getDesiredVolume())
       })
       .catch(() => {
-        if (!destroyed && galleryVisible) {
+        if (!destroyed && galleryVisible && !manuallyPaused) {
           setMusicNeedsGesture(true)
         }
       })
+  }
+
+  // Pause when leaving the tab, resume only if it was playing.
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      resumeAfterTabSwitch = !audio.paused && !manuallyPaused
+
+      cancelFade()
+      audio.pause()
+      return
+    }
+
+    if (resumeAfterTabSwitch && galleryVisible && !manuallyPaused) {
+      resumeAfterTabSwitch = false
+
+      void audio.play()
+        .then(() => {
+          if (destroyed || document.hidden || manuallyPaused) {
+            audio.pause()
+            return
+          }
+
+          fadeTo(getDesiredVolume())
+        })
+        .catch((error: unknown) => {
+          if (!destroyed && galleryVisible && !manuallyPaused) {
+            console.info('Could not resume gallery music:', error)
+            setMusicNeedsGesture(true)
+          }
+        })
+    }
   }
 
   const observer = new IntersectionObserver(
@@ -672,28 +674,21 @@ audio.muted = false
     { threshold: 0 },
   )
 
-  window.addEventListener(
-    'scroll',
-    updateGalleryVisibility,
-    { passive: true },
-  )
+  window.addEventListener('scroll', updateGalleryVisibility, {
+    passive: true,
+  })
 
-  window.addEventListener(
-    'resize',
-    updateGalleryVisibility,
-  )
+  window.addEventListener('resize', updateGalleryVisibility)
 
-  // These events may allow Safari to start playback after
-  // the visitor has interacted with the website.
-  document.addEventListener(
-    'pointerdown',
-    onUserInteraction,
-    { passive: true },
-  )
+  document.addEventListener('pointerdown', onUserInteraction, {
+    passive: true,
+  })
+
+  document.addEventListener('keydown', onUserInteraction)
 
   document.addEventListener(
-    'keydown',
-    onUserInteraction,
+    'visibilitychange',
+    handleVisibilityChange,
   )
 
   observer.observe(gallery)
@@ -708,24 +703,15 @@ audio.muted = false
 
     observer.disconnect()
 
-    window.removeEventListener(
-      'scroll',
-      updateGalleryVisibility,
-    )
+    window.removeEventListener('scroll', updateGalleryVisibility)
+    window.removeEventListener('resize', updateGalleryVisibility)
 
-    window.removeEventListener(
-      'resize',
-      updateGalleryVisibility,
-    )
+    document.removeEventListener('pointerdown', onUserInteraction)
+    document.removeEventListener('keydown', onUserInteraction)
 
     document.removeEventListener(
-      'pointerdown',
-      onUserInteraction,
-    )
-
-    document.removeEventListener(
-      'keydown',
-      onUserInteraction,
+      'visibilitychange',
+      handleVisibilityChange,
     )
 
     cancelFade()
