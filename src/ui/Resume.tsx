@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ZooopLogo } from './ZooopLogo'
 import { SOCIAL_ICONS } from './SocialIcons'
 import { FOCUS_POINTS } from '../data/focusPoints'
+import { useState, type ReactNode } from 'react'
 
 // Resume data
 interface ResumeGroup {
@@ -30,7 +31,7 @@ const RESUME = {
       period: 'TRAVELLING',
       place: '100 Countries Before 50',
       points: [
-        'My dream is to explore 100 countries before I turn 50. Chasing mountain views, discovering new cultures, getting lost in unfamiliar streets, and collecting stories along the way.',
+        'My dream is to explore {{100 countries}} before I turn 50. Chasing mountain views, discovering new cultures, getting lost in unfamiliar streets, and collecting stories along the way.',
         '“When I’m far from home, don’t call me on the phone to tell me you’re alone.” — Eye Without a Face, Billy Idol',
       ],
     },
@@ -38,7 +39,7 @@ const RESUME = {
       period: 'OUTDOORS',
       place: 'Made for the Mountains',
       points: [
-        'Give me a mountain trail, fresh air, and a view worth the climb. Some of my favourite moments are the ones that take me outside my comfort zone.',
+        'Give me a mountain trail, fresh air, and {{a view worth the climb}}. Some of my favourite moments are the ones that take me outside my comfort zone.',
         'The best views come after the hardest climbs. Here’s to more trails, higher peaks, and adventures that make the journey worthwhile.',
       ],
     },
@@ -46,7 +47,7 @@ const RESUME = {
       period: 'ON REPEAT',
       place: 'Life in Stereo',
       points: [
-        'Some songs take me back in time; others make an ordinary drive feel like a movie scene. Sometimes, music says what words never could.',
+        'Some songs take me back in time; others make an ordinary drive feel like {{a movie scene}}. Sometimes, music says what words never could.',
         'From old favourites to songs I’ve just discovered, there’s always something playing in the background of my life.',
       ],
     },
@@ -54,7 +55,7 @@ const RESUME = {
       period: 'TRYING TO STAY CONSISTENT',
       place: 'Strong Enough for the Journey',
       points: [
-        'I stay active and train every day. Training today so I can chase adventures until my last breath.',
+        'I stay active and {{train every day}}. Training today so I can chase adventures until my last breath.',
         'The goal isn’t just to live longer, but to stay strong enough to do the things I love — right up until my last adventure.',
       ],
     },
@@ -63,7 +64,7 @@ const RESUME = {
       place: 'The Art of Being Alone',
       points: [
         'I genuinely enjoy spending time by myself. Solo walks, quiet places, music, and getting lost in my thoughts help me recharge.',
-        'I’ve learned that being alone isn’t the same as being lonely. Sometimes, the best company is your own.',
+        'I’ve learned that {{being alone isn’t the same as being lonely}}. Sometimes, the best company is your own.',
       ],
     },
   ] satisfies ResumeEntry[],
@@ -75,6 +76,19 @@ const RESUME = {
 const POINT_ORDER = FOCUS_POINTS
 
 const EASE = [0.22, 1, 0.36, 1] as const
+
+/** `{{phrase}}` in the copy becomes an underlined highlight that draws itself in. */
+function renderCopy(text: string): ReactNode[] {
+  return text.split(/(\{\{.*?\}\})/g).map((part, i) =>
+    part.startsWith('{{') ? (
+      <mark key={i} className="tl-hl">
+        {part.slice(2, -2)}
+      </mark>
+    ) : (
+      part
+    ),
+  )
+}
 
 const containerV = {
   hidden: {},
@@ -184,9 +198,11 @@ function Entry({
   entry: ResumeEntry
   index: number
 }) {
+  const [seen, setSeen] = useState(false)
   return (
     <motion.div
-      className="tl-entry"
+      className={`tl-entry${seen ? ' is-in' : ''}`}
+      onViewportEnter={() => setSeen(true)}
       data-point={POINT_ORDER[index]}
       variants={containerV}
       initial="hidden"
@@ -230,7 +246,7 @@ function Entry({
         {entry.points && (
           <motion.ul className="tl-points" variants={itemV}>
             {entry.points.map((p, i) => (
-              <li key={i}>{p}</li>
+              <li key={i}>{renderCopy(p)}</li>
             ))}
           </motion.ul>
         )}

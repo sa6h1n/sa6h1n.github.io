@@ -16,6 +16,7 @@ import {
 import * as THREE from 'three'
 
 import Env from './Env'
+import { audioLevel } from '../audio/level'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
 
 useGLTF.preload(`${import.meta.env.BASE_URL}models/me.glb`)
@@ -48,9 +49,15 @@ function GradientBackground() {
       uTop: { value: new THREE.Color() },
       uBottom: { value: new THREE.Color() },
       uSteep: { value: 1 },
+      uPulse: { value: 0 },
     }),
     [],
   )
+
+  // Music makes the sky glow breathe (kick = flash, bass = swell).
+  useFrame(() => {
+    uniforms.uPulse.value = audioLevel.bass * 0.55 + audioLevel.kick * 0.45
+  })
 
   uniforms.uTop.value.set(top)
   uniforms.uBottom.value.set(bottom)
@@ -80,6 +87,7 @@ function GradientBackground() {
           uniform vec3 uTop;
           uniform vec3 uBottom;
           uniform float uSteep;
+          uniform float uPulse;
 
           varying vec3 vDir;
 
@@ -90,10 +98,12 @@ function GradientBackground() {
               1.0
             );
 
-            gl_FragColor = vec4(
-              mix(uBottom, uTop, t),
-              1.0
-            );
+            vec3 sky = mix(uBottom, uTop, t);
+
+            // glow is strongest near the horizon
+            sky += uPulse * vec3(0.10, 0.14, 0.22) * (1.0 - t * 0.6);
+
+            gl_FragColor = vec4(sky, 1.0);
           }
         `}
       />
@@ -114,6 +124,14 @@ function Lights() {
     fillColor: '#9fc6ff',
     fillPos: [-5, 4, -4] as [number, number, number],
   }
+
+  // Drum hits flash the cool fill light.
+  const fillRef = useRef<THREE.DirectionalLight>(null)
+  useFrame(() => {
+    if (!fillRef.current) return
+    fillRef.current.intensity =
+      c.fillIntensity + audioLevel.kick * 1.6 + audioLevel.bass * 0.6
+  })
 
   return (
     <>
@@ -144,6 +162,7 @@ function Lights() {
       />
 
       <directionalLight
+        ref={fillRef}
         position={c.fillPos}
         intensity={c.fillIntensity}
         color={c.fillColor}
@@ -373,6 +392,9 @@ function Man2({
   // Body movement
 const bodyRef = useRef<THREE.Group>(null)
 
+// Beat state: which way the body leans on the next drum hit.
+const beat = useRef({ sign: 1, last: 0 })
+
 const bodyMotion = useRef({
   rotationX: 0,
   rotationY: 0,
@@ -465,7 +487,13 @@ if (bodyRef.current && !REDUCED_MOTION) {
 
   const targetX = idleX - mouse.current.y * 0.28 * touchGain
   const targetY = mouse.current.x * 0.32 * touchGain
-  const targetZ = idleZ - mouse.current.x * 0.12 * touchGain
+  // Lean left/right on every drum hit, alternating sides.
+  const kick = audioLevel.kick
+  if (kick > 0.6 && beat.current.last <= 0.6) beat.current.sign *= -1
+  beat.current.last = kick
+
+  const targetZ =
+    idleZ - mouse.current.x * 0.12 * touchGain + beat.current.sign * kick * 0.07
 
   const smoothing = 1 - Math.exp(-3.5 * dt)
 
@@ -483,7 +511,9 @@ if (bodyRef.current && !REDUCED_MOTION) {
   )
 
   // Gentle up-and-down movement
-  bodyRef.current.position.y = Math.sin(time * 1.4) * 0.06
+  // (and bounces a little with the bass)
+  bodyRef.current.position.y =
+    Math.sin(time * 1.4) * 0.06 + kick * 0.05 + audioLevel.bass * 0.025
 }
     if (!anchorEls.current) {
       anchorEls.current = POINTS.map((n) =>
@@ -951,6 +981,15 @@ function Post2({
 
   const dofRef = useRef<any>(null)
 
+  // Bloom swells with the bass and pops on the kick.
+  const bloomRef = useRef<any>(null)
+  useFrame(() => {
+    const e = bloomRef.current
+    if (!e) return
+    e.intensity =
+      post.bloomIntensity + audioLevel.bass * 0.45 + audioLevel.kick * 0.5
+  })
+
   const isMobile = useRef(
     typeof window !== 'undefined' &&
       (
@@ -1069,6 +1108,7 @@ function Post2({
       ) as any}
 
       <Bloom
+        ref={bloomRef}
         mipmapBlur
         intensity={post.bloomIntensity}
         luminanceThreshold={post.bloomThreshold}

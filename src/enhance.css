@@ -1,4 +1,9 @@
+/* ============================================================================
+   Enhancements: photo tilt/glare/grain, the closing-line transition,
+   underlined key phrases. Loaded after styles.css; nothing there was edited.
+   ========================================================================== */
 
+/* ───────── key phrases in "A Little About Me" get an underline that draws itself in ───────── */
 .tl-entry { position: relative; }
 .tl-hl {
   color: inherit; padding-bottom: 2px;
@@ -42,79 +47,9 @@
   .wk-photo .film-grain { animation: none !important; }
 }
 
-/* ───────── Gallery opening line: right-side negative space → clears left for photos ───────── */
-.wk-gallery-intro {
-  position: absolute;
-  z-index: 3;
-  top: 34%;
-  left: 55%;
-  width: min(560px, 39vw);
-  margin: 0;
-  pointer-events: none;
-  font-family: 'Mansalva', cursive;
-  font-size: clamp(34px, 5.2vw, 72px);
-  font-weight: 400;
-  line-height: 1.18;
-  letter-spacing: 0.01em;
-  color: var(--ink, #f4f1ea);
-  text-shadow: 0 1px 2px rgba(10, 13, 20, 0.45), 0 0 28px rgba(10, 13, 20, 0.35);
-  transform-origin: left center;
-  will-change: transform, opacity, filter;
-}
-.wk-gallery-intro-mark {
-  color: #ffd9b3;
-  padding-bottom: 2px;
-  background: linear-gradient(#ffd9b3, #ffd9b3) no-repeat left 100% / 100% 2px;
-}
-.wk-gallery-intro-word {
-  display: inline-block;
-  will-change: transform, opacity, filter;
-}
-
-@media (max-width: 640px) {
-  /* The mobile gallery is a vertical stack, so keep this as a separate,
-     readable intro panel above the first collection instead of overlaying
-     the character or the photos. */
-  .wk-gallery-intro {
-    position: relative;
-    top: auto;
-    left: auto;
-    box-sizing: border-box;
-    width: calc(100% - 40px);
-    max-width: 520px;
-    margin: 8px 20px 34px;
-    padding: 18px 18px 20px;
-    border-left: 2px solid #ffd9b3;
-    border-radius: 3px;
-    background: linear-gradient(110deg, rgba(8, 13, 25, 0.88), rgba(8, 13, 25, 0.72));
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-    font-size: clamp(25px, 7.2vw, 32px);
-    line-height: 1.16;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-    transform: none !important;
-    opacity: 1 !important;
-    filter: none !important;
-  }
-  .wk-gallery-intro-word {
-    opacity: 1 !important;
-    filter: none !important;
-    transform: none !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wk-gallery-intro {
-    transform: none !important;
-    opacity: 1 !important;
-    filter: none !important;
-  }
-  .wk-gallery-intro-word {
-    opacity: 1 !important;
-    filter: none !important;
-    transform: none !important;
-  }
-}
-
+/* ───────── Closing line: words drift out, new words settle in ─────────
+   The window has a fixed height (room for two lines) and the old and new lines sit on top of
+   each other inside it, so nothing around it ever jumps. */
 .closing-quote {
   max-width: 640px;
   font-size: 11px;

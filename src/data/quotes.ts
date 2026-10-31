@@ -1,3 +1,6 @@
+// The line shown at the very end of the gallery. One is picked at random every time the site
+// is opened, and again each time a visitor leaves the gallery and scrolls back into it
+// (it never repeats the previous one back-to-back). Add or remove lines freely.
 export const CLOSING_QUOTES = [
   'Your life is not yours if you always care about what other people think!',
   'Life becomes more meaningful when you realize that you will never get the same moment twice.',

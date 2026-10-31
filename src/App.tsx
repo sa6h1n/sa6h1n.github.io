@@ -351,6 +351,7 @@ export default function App() {
           lang={lang}
           innerRef={worksRef}
         />
+
       </main>
     </MotionConfig>
   )
