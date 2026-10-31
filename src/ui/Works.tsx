@@ -5,6 +5,7 @@ import {
   useScroll,
   useTransform,
    useInView,
+  type MotionValue,
 } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -19,7 +20,66 @@ import {
 
 import { getWorkDoc } from '../data/workDocs'
 
+import { startAudioReactive } from '../audio/reactive'
+import QuoteReel from './QuoteReel'
+import { useQuoteReveal } from './useQuoteReel'
+import PhotoFigure from './PhotoFigure'
+
 const EASE = [0.22, 1, 0.36, 1] as const
+
+// Each word resolves from blur as the gallery arrives, then dissolves back
+// into blur in a stagger as the photo cards take over the space.
+function GalleryIntroWord({
+  text,
+  index,
+  count,
+  progress,
+  mark,
+}: {
+  text: string
+  index: number
+  count: number
+  progress: MotionValue<number>
+  mark?: boolean
+}) {
+  // Finish the word-by-word focus before the first photo cards arrive.
+  // Then dissolve the line in a stagger so it clears the images instead of
+  // lingering over them.
+  const enterStart = (index / count) * 0.012
+  const enterEnd = 0.035 + (index / count) * 0.045
+  const exitStart = 0.075 + (index / count) * 0.012
+  const exitEnd = exitStart + 0.065
+
+  const opacity = useTransform(
+    progress,
+    [enterStart, enterEnd, exitStart, exitEnd],
+    [0.08, 1, 1, 0.06],
+  )
+  const y = useTransform(
+    progress,
+    [enterStart, enterEnd, exitStart, exitEnd],
+    [18, 0, 0, -12],
+  )
+  const blur = useTransform(
+    progress,
+    [enterStart, enterEnd, exitStart, exitEnd],
+    ['blur(7px)', 'blur(0px)', 'blur(0px)', 'blur(8px)'],
+  )
+  const underline = useTransform(
+    progress,
+    [enterEnd - 0.02, enterEnd + 0.07],
+    ['0% 2px', '100% 2px'],
+  )
+
+  return (
+    <motion.span
+      className={`wk-gallery-intro-word${mark ? ' wk-gallery-intro-mark' : ''}`}
+      style={{ opacity, y, filter: blur, backgroundSize: mark ? underline : undefined }}
+    >
+      {text}
+    </motion.span>
+  )
+}
 
 // A single work item in a section.
 function WorkLine({
@@ -103,18 +163,12 @@ function SectionWorks({
       {section.galleryImages ? (
         <div className="wk-photo-grid">
           {section.galleryImages.map((src, index) => (
-            <figure className="wk-photo" key={src}>
-              <img
-                src={src}
-                alt={`${section.title} — ${section.tagline.toLowerCase()}, photo ${index + 1} of ${section.galleryImages!.length}`}
-                loading="lazy"
-                decoding="async"
-              />
-
-              <figcaption>
-                {String(index + 1).padStart(2, '0')}
-              </figcaption>
-            </figure>
+            <PhotoFigure
+              key={src}
+              src={src}
+              alt={`${section.title} — ${section.tagline.toLowerCase()}, photo ${index + 1} of ${section.galleryImages!.length}`}
+              index={index}
+            />
           ))}
         </div>
       ) : (
@@ -325,6 +379,11 @@ function QuoteCard() {
     once: true,
   })
 
+  // Every time this card scrolls into view a NEW closing line is chosen and a slot-machine reel
+  // spins onto it — on page open, after leaving the gallery, and when scrolling back to it.
+  const onScreen = useInView(quoteRef, { amount: 0.5 })
+  const { quote, runId, delay } = useQuoteReveal(onScreen)
+
   const words = ['Be', 'the', 'world', 'you', 'want', 'to', 'have!']
 
   return (
@@ -384,14 +443,14 @@ function QuoteCard() {
         >
           ✳
         </motion.span>
-        <motion.p
+        <motion.div
   className="closing-quote"
   initial={{ opacity: 0 }}
   animate={isInView ? { opacity: 1 } : { opacity: 0 }}
   transition={{ duration: 0.8, delay: 2.2 }}
 >
-  Your life is not yours if you always care about what other people think!
-</motion.p>
+  <QuoteReel quote={quote} runId={runId} delay={delay} />
+</motion.div>
       </div>
     </div>
   )
@@ -444,6 +503,13 @@ useEffect(() => {
 
   const TARGET_VOLUME = 0.095
   const FADE_DURATION = 800
+
+  // Make the 3D scene pulse with the music (reads audio.currentTime only).
+  const stopReactive = startAudioReactive(
+    audio,
+    audio.src,
+    () => audio.volume / TARGET_VOLUME,
+  )
 
   const cancelFade = () => {
     if (fadeFrame) {
@@ -708,6 +774,7 @@ useEffect(() => {
   return () => {
     destroyed = true
     unlockMusicRef.current = null
+    stopReactive()
 
     observer.disconnect()
 
@@ -778,6 +845,16 @@ useEffect(() => {
     [1, 0],
   )
 
+  // The line starts in the open right-hand space. It begins clearing left
+  // just before the first photo card enters and is fully out of the way by
+  // the time the grid reaches the centre of the viewport.
+  const galleryIntroX = useTransform(
+    scrollYProgress,
+    [0.055, 0.16],
+    ['0vw', '-125vw'],
+  )
+  const galleryIntroWords = 'Here are a few moments I carried back with me.'.split(' ')
+
   // =========================================================
   // WORK DETAIL MODAL
   // =========================================================
@@ -831,6 +908,24 @@ useEffect(() => {
           >
             {data.title}
           </motion.span>
+
+          {/* Intro line uses the open right-hand space, then clears left as photos arrive. */}
+          <motion.p
+            className="wk-gallery-intro"
+            style={{ x: galleryIntroX }}
+            aria-label="Here are a few moments I carried back with me."
+          >
+            {galleryIntroWords.map((word, index) => (
+              <GalleryIntroWord
+                key={`${word}-${index}`}
+                text={`${word}${index < galleryIntroWords.length - 1 ? ' ' : ''}`}
+                index={index}
+                count={galleryIntroWords.length}
+                progress={scrollYProgress}
+                mark={word === 'moments'}
+              />
+            ))}
+          </motion.p>
 
           {/* Horizontal scrolling gallery */}
           <motion.div
