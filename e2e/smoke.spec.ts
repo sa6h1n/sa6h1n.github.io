@@ -117,3 +117,18 @@ test('the closing line is random and changes between visits', async ({ page }) =
   const second = await readQuote()
   expect(second).not.toBe(first) // never the same line twice in a row
 })
+
+test('clicking a dot at the bottom shows that closing line', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  const rest = page.locator('.closing-quote .qr-line.is-rest')
+  await expect(rest).toBeVisible({ timeout: 15000 })
+  await page.waitForTimeout(1200) // dots unlock once the first line has been written out
+  const before = await page.locator('.closing-quote').textContent()
+
+  await page.locator('.quote-dot:not(.is-on)').first().click()
+  await expect(page.locator('.quote-dot.is-on')).toHaveCount(1)
+  await expect(rest).toBeVisible({ timeout: 10000 })
+  const after = await page.locator('.closing-quote').textContent()
+  expect(after).not.toBe(before)
+})

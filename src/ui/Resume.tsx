@@ -28,43 +28,43 @@ const RESUME = {
   title: 'A Little About Me',
   entries: [
     {
-      period: 'TRAVELLING',
-      place: '100 Countries Before 50',
+      period: 'MY BIGGEST DREAM',
+      place: 'I want to see 100 countries before I turn 50',
       points: [
-        'My dream is to explore {{100 countries}} before I turn 50. Chasing mountain views, discovering new cultures, getting lost in unfamiliar streets, and collecting stories along the way.',
+        'I want to visit {{100 countries}} before I turn 50. I love the idea of seeing mountains I’ve never seen, getting lost in streets I don’t know, and coming back home with a lot of stories.',
         '“When I’m far from home, don’t call me on the phone to tell me you’re alone.” — Eye Without a Face, Billy Idol',
       ],
     },
     {
-      period: 'OUTDOORS',
-      place: 'Made for the Mountains',
+      period: 'WHERE I CLEAR MY HEAD',
+      place: 'I’m happiest up in the mountains',
       points: [
-        'Give me a mountain trail, fresh air, and {{a view worth the climb}}. Some of my favourite moments are the ones that take me outside my comfort zone.',
-        'The best views come after the hardest climbs. Here’s to more trails, higher peaks, and adventures that make the journey worthwhile.',
+        'I feel most like myself with a trail ahead of me, fresh air and {{a view worth the climb}}. Honestly, some of my best memories are from the times I got pushed out of my comfort zone.',
+        'I’ve noticed the best views always come after the hardest climbs, so I’m going to keep climbing, a little higher each time.',
       ],
     },
     {
-      period: 'ON REPEAT',
-      place: 'Life in Stereo',
+      period: 'WHAT I’M LISTENING TO',
+      place: 'I always have music on',
       points: [
-        'Some songs take me back in time; others make an ordinary drive feel like {{a movie scene}}. Sometimes, music says what words never could.',
-        'From old favourites to songs I’ve just discovered, there’s always something playing in the background of my life.',
+        'I have songs that take me straight back to a moment in time, and others that make a normal drive feel like {{a scene from a movie}}. Sometimes a song says what I can’t.',
+        'I keep going back to my old favourites, but I’m always hunting for something new to put on repeat.',
       ],
     },
     {
-      period: 'TRYING TO STAY CONSISTENT',
-      place: 'Strong Enough for the Journey',
+      period: 'I’M TRYING TO STAY CONSISTENT',
+      place: 'I train so I can keep going',
       points: [
-        'I stay active and {{train every day}}. Training today so I can chase adventures until my last breath.',
-        'The goal isn’t just to live longer, but to stay strong enough to do the things I love — right up until my last adventure.',
+        'I {{train every day}}, even when I don’t feel like it. I want to be able to go on adventures for as long as I can.',
+        'I don’t just want to live longer. I want to stay strong enough to do the things I love, right up until my last adventure.',
       ],
     },
     {
-      period: 'MY OWN COMPANY',
-      place: 'The Art of Being Alone',
+      period: 'WHEN IT’S JUST ME',
+      place: 'I like being on my own',
       points: [
-        'I genuinely enjoy spending time by myself. Solo walks, quiet places, music, and getting lost in my thoughts help me recharge.',
-        'I’ve learned that {{being alone isn’t the same as being lonely}}. Sometimes, the best company is your own.',
+        'I honestly enjoy my own company. I recharge with a solo walk, a quiet place, some music and getting lost in my thoughts.',
+        'I’ve learned that {{being alone isn’t the same as being lonely}}. Sometimes my own company is the best company.',
       ],
     },
   ] satisfies ResumeEntry[],

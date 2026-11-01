@@ -56,10 +56,10 @@
   display: flex; align-items: center; justify-content: flex-end;
   padding: 0 clamp(24px, 7vw, 120px); box-sizing: border-box;
 }
-.wk-intro-inner { width: min(620px, 100%); }
+.wk-intro-inner { width: min(500px, 100%); }
 .wk-intro-line {
   margin: 0; font-family: 'Mansalva', cursive; font-weight: 400;
-  font-size: clamp(34px, 4.8vw, 68px); line-height: 1.2; letter-spacing: 0.01em;
+  font-size: clamp(28px, 3.4vw, 50px); line-height: 1.22; letter-spacing: 0.01em;
   text-wrap: balance;
   color: var(--ink, #f4f1ea);
   text-shadow: 0 1px 2px rgba(10, 13, 20, 0.45), 0 0 28px rgba(10, 13, 20, 0.35);
@@ -67,6 +67,8 @@
 /* a word never breaks across lines; its letters are individually animated */
 .wk-intro-word { position: relative; display: inline-block; white-space: nowrap; }
 .wk-intro-char { display: inline-block; will-change: transform, opacity, filter; }
+/* wrapper that carries each letter's scroll-driven exit (so it never fights the entrance spring) */
+.wk-intro-exit { display: inline-block; will-change: transform, opacity, filter; }
 
 /* the marked word: warm colour, a gentle ripple running through its letters, a drawn squiggle */
 .wk-intro-word.is-mark { color: #ffd9b3; padding-bottom: 0.18em; }
@@ -81,7 +83,7 @@
   /* phones stack the gallery vertically: the panel is a compact block above the first card */
   .wk-intro { width: 100%; height: auto; justify-content: center; padding: 6vh 7vw 7vh; }
   .wk-intro-inner { text-align: center; }
-  .wk-intro-line { font-size: clamp(30px, 9vw, 44px); }
+  .wk-intro-line { font-size: clamp(26px, 7.4vw, 38px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .wk-intro.is-seen .wk-intro-word.is-mark .wk-intro-char { animation: none; }
@@ -118,4 +120,37 @@
 
 @media (prefers-reduced-motion: reduce) {
   .qr-line .qr-word { animation: none !important; }
+}
+
+/* The dots at the very bottom (where the progress line was): one per closing line; click one to show it */
+.quote-dots-wrap {
+  position: absolute; left: 0; right: 0; bottom: clamp(18px, 4.5vh, 44px);
+  display: flex; justify-content: center; z-index: 2;
+}
+.quote-dots { display: flex; gap: 7px; }
+.quote-dot {
+  position: relative; width: 5px; height: 5px; padding: 0; border: 0; border-radius: 50%;
+  background: rgba(245, 239, 230, 0.26); cursor: pointer; outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.35s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+/* the dot stays small, but its tap target reaches into the gaps around it */
+.quote-dot::after { content: ''; position: absolute; inset: -9px -5px; }
+.quote-dot:hover { background: #ffd9b3; transform: scale(1.4); box-shadow: 0 0 8px rgba(255, 217, 179, 0.55); }
+.quote-dot:active { transform: scale(1.15); }
+.quote-dot:focus-visible { box-shadow: 0 0 0 3px rgba(255, 217, 179, 0.7); }
+.quote-dot.is-on { background: #ffd9b3; transform: scale(1.35); cursor: default; box-shadow: none; }
+/* until the first click, a faint wave of light runs across the dots every few seconds */
+.quote-dots-wrap:not(.is-used) .quote-dot:not(.is-on) {
+  animation: dotWave 5.5s ease-in-out calc(5s + var(--i) * 0.16s) infinite;
+}
+@keyframes dotWave {
+  0%, 14%, 100% { transform: scale(1); background: rgba(245, 239, 230, 0.26); }
+  7%            { transform: scale(1.5); background: #ffd9b3; }
+}
+@media (max-width: 640px) {
+  .wk-quote-card { padding-bottom: 64px; } /* room for the dots when the gallery is stacked */
+}
+@media (prefers-reduced-motion: reduce) {
+  .quote-dots-wrap:not(.is-used) .quote-dot { animation: none; }
 }

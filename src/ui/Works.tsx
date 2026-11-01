@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
+import { CLOSING_QUOTES } from '../data/quotes'
 import {
   motion,
   AnimatePresence,
@@ -6,6 +7,7 @@ import {
   useTransform,
    useInView,
   useReducedMotion,
+  type MotionValue,
 } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -319,15 +321,37 @@ function WorkDetail({
 
 // The first screen of the horizontal strip: one big line, written letter by letter — every
 // letter springs up with a little tilt and settles; the marked word gets a hand-drawn squiggle
-// that draws itself and then ripples gently. The panel slides off to the left as the photo
-// cards slide in from the right.
-function GalleryIntro({ text }: { text: string }) {
+// that draws itself and then ripples gently. When you scroll on, the line doesn't just slide
+// away: its letters lift off one after another (reading order), tilting, blurring and fading as
+// the photo cards slide in from the right.
+
+/** One letter's exit, driven by how far the strip has scrolled (`exit` 0 → 1). */
+function ExitLetter({ exit, i, n, children }: { exit: MotionValue<number>; i: number; n: number; children: ReactNode }) {
+  const from = (i / n) * 0.42
+  const to = from + 0.4
+  const y = useTransform(exit, [from, to], [0, -52 - ((i * 29) % 24)])
+  const x = useTransform(exit, [from, to], [0, -34])
+  const rotate = useTransform(exit, [from, to], [0, ((i * 53) % 29) - 14])
+  const opacity = useTransform(exit, [from, to], [1, 0])
+  const filter = useTransform(exit, [from, to], ['blur(0px)', 'blur(9px)'])
+  return (
+    <motion.span className="wk-intro-exit" style={{ x, y, rotate, opacity, filter }}>
+      {children}
+    </motion.span>
+  )
+}
+
+function GalleryIntro({ text, x }: { text: string; x: MotionValue<number> }) {
   const ref = useRef<HTMLDivElement>(null)
   const seen = useInView(ref, { once: true, amount: 0.35 })
   const reduce = useReducedMotion()
   const words = text.split(' ')
   const plain = text.replace(/\*/g, '')
-  const lastIdx = plain.replace(/ /g, '').length
+  const total = plain.replace(/ /g, '').length
+
+  // 0 while the panel sits on screen → 1 once it has slid ~80 % of its width to the left
+  const exit = useTransform(x, (v) => Math.min(1, Math.max(0, -v / (window.innerWidth * 0.8))))
+  const squiggleFade = useTransform(exit, [0, 0.25], [1, 0])
 
   let ci = 0 // running letter index, for the stagger
   return (
@@ -344,9 +368,8 @@ function GalleryIntro({ text }: { text: string }) {
                     const i = ci++
                     const tilt = ((i * 37) % 21) - 10 // −10° … +10°, stable
                     const delay = 0.2 + i * 0.034
-                    return (
+                    const letter = (
                       <motion.span
-                        key={k}
                         className="wk-intro-char"
                         style={mark ? { animationDelay: `${1.6 + k * 0.11}s` } : undefined}
                         initial={reduce ? false : { opacity: 0, y: 46, rotate: tilt, scale: 0.7, filter: 'blur(7px)' }}
@@ -360,9 +383,20 @@ function GalleryIntro({ text }: { text: string }) {
                         {ch}
                       </motion.span>
                     )
+                    return reduce ? (
+                      <span key={k} className="wk-intro-exit">{letter}</span>
+                    ) : (
+                      <ExitLetter key={k} exit={exit} i={i} n={total}>{letter}</ExitLetter>
+                    )
                   })}
                   {mark && (
-                    <svg className="wk-intro-squiggle" viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true">
+                    <motion.svg
+                      className="wk-intro-squiggle"
+                      viewBox="0 0 200 14"
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                      style={reduce ? undefined : { opacity: squiggleFade }}
+                    >
                       <motion.path
                         d="M2 8 C 22 2, 40 13, 66 7 S 112 2, 138 8 S 178 12, 198 5"
                         fill="none"
@@ -372,9 +406,9 @@ function GalleryIntro({ text }: { text: string }) {
                         vectorEffect="non-scaling-stroke"
                         initial={reduce ? false : { pathLength: 0 }}
                         animate={seen || reduce ? { pathLength: 1 } : undefined}
-                        transition={{ duration: 0.9, delay: 0.2 + lastIdx * 0.034 * 0.5, ease: EASE }}
+                        transition={{ duration: 0.9, delay: 0.2 + total * 0.034 * 0.5, ease: EASE }}
                       />
-                    </svg>
+                    </motion.svg>
                   )}
                 </span>
                 {wi < words.length - 1 ? ' ' : null}
@@ -398,7 +432,28 @@ function QuoteCard() {
   // Every time this card scrolls into view a NEW closing line is chosen and a slot-machine reel
   // spins onto it — on page open, after leaving the gallery, and when scrolling back to it.
   const onScreen = useInView(quoteRef, { amount: 0.5 })
-  const { quote, runId, delay } = useQuoteReveal(onScreen)
+  const { quote, runId, delay, showQuote } = useQuoteReveal(onScreen)
+
+  // The dots at the very bottom are the control: click one to show that line. Ignored while a
+  // change is still playing, and until the first line has finished writing itself out.
+  const [busy, setBusy] = useState(false)
+  const [used, setUsed] = useState(false) // after the first click the "look at me" cues stop
+  const busyTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(busyTimer.current), [])
+  useEffect(() => {
+    if (!isInView) return
+    setBusy(true)
+    const t = window.setTimeout(() => setBusy(false), 4300)
+    return () => window.clearTimeout(t)
+  }, [isInView])
+  const pick = (i: number) => {
+    if (busy || CLOSING_QUOTES[i] === quote) return
+    setUsed(true)
+    setBusy(true)
+    showQuote(CLOSING_QUOTES[i])
+    busyTimer.current = window.setTimeout(() => setBusy(false), 2600)
+  }
+  const current = CLOSING_QUOTES.indexOf(quote)
 
   const words = ['Be', 'the', 'world', 'you', 'want', 'to', 'have!']
 
@@ -460,13 +515,36 @@ function QuoteCard() {
           ✳
         </motion.span>
         <motion.div
-  className="closing-quote"
-  initial={{ opacity: 0 }}
-  animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-  transition={{ duration: 0.5, delay: 1.9 }}
->
-  <QuoteReel quote={quote} runId={runId} delay={delay} />
-</motion.div>
+          className="closing-quote"
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.5, delay: 1.9 }}
+        >
+          <QuoteReel quote={quote} runId={runId} delay={delay} />
+        </motion.div>
+
+        {/* very bottom (where the progress line was): one dot per line — click one to show it */}
+        <motion.div
+          className={`quote-dots-wrap${used ? ' is-used' : ''}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+          transition={{ duration: 0.65, delay: 2.4, ease: EASE }}
+        >
+          <nav className="quote-dots" aria-label="Choose a closing line">
+            {CLOSING_QUOTES.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`quote-dot${i === current ? ' is-on' : ''}`}
+                style={{ ['--i' as string]: i }}
+                aria-label={`Line ${i + 1} of ${CLOSING_QUOTES.length}`}
+                aria-current={i === current || undefined}
+                title="Show this line"
+                onClick={() => pick(i)}
+              />
+            ))}
+          </nav>
+        </motion.div>
       </div>
     </div>
   )
@@ -855,6 +933,9 @@ useEffect(() => {
     [0, -scrollRange],
   )
 
+  // the progress line is gone by the time the closing screen is reached
+  const progressOpacity = useTransform(scrollYProgress, [0.86, 0.95], [1, 0])
+
   const hintOpacity = useTransform(
     scrollYProgress,
     [0.85, 1],
@@ -921,7 +1002,7 @@ useEffect(() => {
             ref={trackRef}
             style={{ x }}
           >
-            <GalleryIntro text={data.intro} />
+            <GalleryIntro text={data.intro} x={x} />
 
             {sections.map((section) => (
               <SectionCard
@@ -937,15 +1018,16 @@ useEffect(() => {
           </motion.div>
 
           {/* Scroll progress indicator */}
-          <div
+          <motion.div
             className="wk-progress"
+            style={{ opacity: progressOpacity }}
             aria-hidden="true"
           >
             <motion.div
               className="wk-progress-fill"
               style={{ scaleX: scrollYProgress }}
             />
-          </div>
+          </motion.div>
 
           {/* Scroll hint */}
           <motion.span

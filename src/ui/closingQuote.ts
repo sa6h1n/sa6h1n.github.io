@@ -27,3 +27,12 @@ export function pickClosingQuote(avoid?: string): string {
   }
   return quote
 }
+
+/** Remember a line the visitor picked by hand, so the next visit doesn't open on the same one. */
+export function rememberClosingQuote(quote: string) {
+  try {
+    localStorage.setItem(KEY, quote)
+  } catch {
+    /* ignore */
+  }
+}
