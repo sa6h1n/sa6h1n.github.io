@@ -25,7 +25,7 @@ const rnd = (n: number) => {
 type Mode = 'rest' | 'out' | 'in'
 
 /** One line, word by word. In `out`/`in` mode every word carries its own offset and delay. */
-function Line({ text, mode, seed }: { text: string; mode: Mode; seed: number }) {
+function Line({ text, mode, seed, lead }: { text: string; mode: Mode; seed: number; lead: number }) {
   const words = text.split(' ')
   return (
     <span className={`qr-line is-${mode}`}>
@@ -33,7 +33,7 @@ function Line({ text, mode, seed }: { text: string; mode: Mode; seed: number }) 
         const r = rnd(i + seed * 17)
         const vars =
           mode === 'in'
-            ? { '--dx': `${(r - 0.5) * 36}px`, '--dy': `${14 + r * 16}px`, '--d': `${IN_START + i * IN_STEP + r * 140}ms` }
+            ? { '--dx': `${(r - 0.5) * 36}px`, '--dy': `${14 + r * 16}px`, '--d': `${lead + i * IN_STEP + r * 140}ms` }
             : mode === 'out'
               ? { '--dx': `${(rnd(i + 5 + seed) - 0.5) * 30}px`, '--dy': `${-(10 + r * 14)}px`, '--d': `${r * OUT_SPREAD}ms` }
               : undefined
@@ -49,30 +49,39 @@ function Line({ text, mode, seed }: { text: string; mode: Mode; seed: number }) 
 }
 
 /**
- * The closing line changes like a thought settling: the old line's words drift up and dissolve
+ * The closing line is revealed — and later changed — like a thought settling. The very first time
+ * nothing is shown beforehand: the words just drift in. After that: the old line's words drift up and dissolve
  * into a soft blur, and the new line's words float in from slightly scattered places, out of
  * focus, one after another, and settle into the sentence. No flashing, no spinning.
  * The window has a fixed height, so nothing around it ever jumps.
  */
 export default function QuoteReel({ quote, runId, delay }: Props) {
-  const [layers, setLayers] = useState<{ text: string; mode: Mode; seed: number }[]>([{ text: quote, mode: 'rest', seed: 0 }])
-  const shown = useRef(quote) // the line on screen once everything is at rest
+  // Blank until the first reveal: the first time, the quote is never shown "at rest" before the
+  // animation — the words simply arrive. Later changes dissolve the old line into the new one.
+  const [layers, setLayers] = useState<{ text: string; mode: Mode; seed: number; lead: number }[]>([])
+  const shown = useRef<string | null>(null) // the line on screen once everything is at rest (null = nothing yet)
 
   useEffect(() => {
-    if (runId === 0) { setLayers([{ text: quote, mode: 'rest', seed: 0 }]); shown.current = quote; return }
+    if (runId === 0) return // not on screen yet — show nothing, the first reveal will animate in
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    if (reduce) { setLayers([{ text: quote, mode: 'rest', seed: 0 }]); shown.current = quote; return }
+    if (reduce) { setLayers([{ text: quote, mode: 'rest', seed: 0, lead: 0 }]); shown.current = quote; return }
 
     const timers: number[] = []
     timers.push(window.setTimeout(() => {
-      setLayers([
-        { text: shown.current, mode: 'out', seed: runId },
-        { text: quote, mode: 'in', seed: runId + 1 },
-      ])
+      const first = shown.current === null
+      const lead = first ? 80 : IN_START // nothing to wait for on the very first reveal
+      setLayers(
+        first
+          ? [{ text: quote, mode: 'in', seed: runId + 1, lead }]
+          : [
+              { text: shown.current as string, mode: 'out', seed: runId, lead: 0 },
+              { text: quote, mode: 'in', seed: runId + 1, lead },
+            ],
+      )
       const words = quote.split(' ').length
-      const total = IN_START + words * IN_STEP + 140 + IN_MS + 60
+      const total = lead + words * IN_STEP + 140 + IN_MS + 60
       timers.push(window.setTimeout(() => {
-        setLayers([{ text: quote, mode: 'rest', seed: 0 }])
+        setLayers([{ text: quote, mode: 'rest', seed: 0, lead: 0 }])
         shown.current = quote
       }, total))
     }, delay))
@@ -84,7 +93,7 @@ export default function QuoteReel({ quote, runId, delay }: Props) {
     <span className="qr-window">
       {layers.map((l) => (
         <span className="qr-layer" key={`${l.mode}-${l.seed}-${l.text.slice(0, 10)}`} aria-hidden={l.mode === 'out' || undefined}>
-          <Line text={l.text} mode={l.mode} seed={l.seed} />
+          <Line text={l.text} mode={l.mode} seed={l.seed} lead={l.lead} />
         </span>
       ))}
     </span>

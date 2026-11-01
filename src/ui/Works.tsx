@@ -463,7 +463,7 @@ function QuoteCard() {
   className="closing-quote"
   initial={{ opacity: 0 }}
   animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-  transition={{ duration: 0.8, delay: 2.2 }}
+  transition={{ duration: 0.5, delay: 1.9 }}
 >
   <QuoteReel quote={quote} runId={runId} delay={delay} />
 </motion.div>

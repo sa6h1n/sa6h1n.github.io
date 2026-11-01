@@ -102,11 +102,18 @@ test('"A Little About Me" highlights five key phrases', async ({ page }) => {
 
 
 test('the closing line is random and changes between visits', async ({ page }) => {
+  // the line is revealed (not pre-shown) once the closing card scrolls into view
+  const readQuote = async () => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await expect(page.locator('.closing-quote .qr-line.is-rest')).toBeVisible({ timeout: 15000 })
+    return page.locator('.closing-quote').textContent()
+  }
+
   await page.goto('/')
-  const first = await page.locator('.closing-quote').textContent()
+  const first = await readQuote()
   expect(first && first.length).toBeGreaterThan(20)
 
   await page.reload()
-  const second = await page.locator('.closing-quote').textContent()
+  const second = await readQuote()
   expect(second).not.toBe(first) // never the same line twice in a row
 })
