@@ -902,7 +902,7 @@ canvas {
   height: 100%;
   /* 板块间无 gap，边到边相连 */
   /* 起始整排推到视口右缘外：左留白 = 一整屏，滚动时卡片从右侧依次滑入 */
-  padding-left: 100vw;
+  padding-left: 0; /* the first screen is now the .wk-intro panel (see enhance.css) */
   padding-right: 0;
   will-change: transform;
 }

@@ -5,6 +5,7 @@ import {
   useScroll,
   useTransform,
    useInView,
+  useReducedMotion,
 } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -313,6 +314,76 @@ function WorkDetail({
         </article>
       </motion.div>
     </>
+  )
+}
+
+// The first screen of the horizontal strip: one big line, written letter by letter — every
+// letter springs up with a little tilt and settles; the marked word gets a hand-drawn squiggle
+// that draws itself and then ripples gently. The panel slides off to the left as the photo
+// cards slide in from the right.
+function GalleryIntro({ text }: { text: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const seen = useInView(ref, { once: true, amount: 0.35 })
+  const reduce = useReducedMotion()
+  const words = text.split(' ')
+  const plain = text.replace(/\*/g, '')
+  const lastIdx = plain.replace(/ /g, '').length
+
+  let ci = 0 // running letter index, for the stagger
+  return (
+    <div className={`wk-intro${seen ? ' is-seen' : ''}`} ref={ref}>
+      <div className="wk-intro-inner">
+        <p className="wk-intro-line" aria-label={plain}>
+          {words.map((w, wi) => {
+            const mark = w.startsWith('*')
+            const chars = Array.from(w.replace(/\*/g, ''))
+            return (
+              <span key={wi} aria-hidden="true">
+                <span className={`wk-intro-word${mark ? ' is-mark' : ''}`}>
+                  {chars.map((ch, k) => {
+                    const i = ci++
+                    const tilt = ((i * 37) % 21) - 10 // −10° … +10°, stable
+                    const delay = 0.2 + i * 0.034
+                    return (
+                      <motion.span
+                        key={k}
+                        className="wk-intro-char"
+                        style={mark ? { animationDelay: `${1.6 + k * 0.11}s` } : undefined}
+                        initial={reduce ? false : { opacity: 0, y: 46, rotate: tilt, scale: 0.7, filter: 'blur(7px)' }}
+                        animate={seen || reduce ? { opacity: 1, y: 0, rotate: 0, scale: 1, filter: 'blur(0px)' } : undefined}
+                        transition={{
+                          default: { type: 'spring', stiffness: 150, damping: 12, mass: 0.7, delay },
+                          opacity: { duration: 0.45, delay },
+                          filter: { duration: 0.7, delay },
+                        }}
+                      >
+                        {ch}
+                      </motion.span>
+                    )
+                  })}
+                  {mark && (
+                    <svg className="wk-intro-squiggle" viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true">
+                      <motion.path
+                        d="M2 8 C 22 2, 40 13, 66 7 S 112 2, 138 8 S 178 12, 198 5"
+                        fill="none"
+                        stroke="#ffd9b3"
+                        strokeWidth="2.6"
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                        initial={reduce ? false : { pathLength: 0 }}
+                        animate={seen || reduce ? { pathLength: 1 } : undefined}
+                        transition={{ duration: 0.9, delay: 0.2 + lastIdx * 0.034 * 0.5, ease: EASE }}
+                      />
+                    </svg>
+                  )}
+                </span>
+                {wi < words.length - 1 ? ' ' : null}
+              </span>
+            )
+          })}
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -790,7 +861,6 @@ useEffect(() => {
     [1, 0],
   )
 
-
   // =========================================================
   // WORK DETAIL MODAL
   // =========================================================
@@ -845,13 +915,14 @@ useEffect(() => {
             {data.title}
           </motion.span>
 
-
           {/* Horizontal scrolling gallery */}
           <motion.div
             className="wk-track"
             ref={trackRef}
             style={{ x }}
           >
+            <GalleryIntro text={data.intro} />
+
             {sections.map((section) => (
               <SectionCard
                 key={section.id}

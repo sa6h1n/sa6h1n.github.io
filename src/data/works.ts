@@ -31,6 +31,8 @@ export interface WorksLang {
   closeLabel: string
   openLabel: string
   hint: string
+  /** the opening line of the gallery strip; *word* gets the warm underline */
+  intro: string
   awardsLabel: string
   visitLabel: string
   detailPlaceholder: string
@@ -92,6 +94,7 @@ export const WORKS: Record<'zh' | 'en', WorksLang> = {
     closeLabel: 'Back',
     openLabel: 'Explore',
     hint: 'Keep scrolling',
+    intro: 'Here are a few *moments* I carried back with me.',
     awardsLabel: '',
     visitLabel: 'Visit site',
     detailPlaceholder: '',
@@ -106,6 +109,7 @@ export const WORKS: Record<'zh' | 'en', WorksLang> = {
     closeLabel: 'Back',
     openLabel: 'Explore',
     hint: 'Keep scrolling',
+    intro: 'Here are a few *moments* I carried back with me.',
     awardsLabel: '',
     visitLabel: 'Visit site',
     detailPlaceholder: '',
