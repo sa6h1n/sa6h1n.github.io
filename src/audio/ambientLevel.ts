@@ -10,7 +10,9 @@
  *   Gallery .............. normal
  *       · After Hours (the song covers) ducks low — only when you scroll INTO it from the left,
  *         not when you come back to it from the last page
- *   (a song preview that is playing silences the background track — handled in ambient.ts)
+ *   (a song preview that is playing silences the background track — handled in ambient.ts:
+ *    once a song has been played from the music page the track stays silent for as long as the
+ *    visitor stays on that page, and fades back in slowly after they scroll out of it)
  */
 
 /** All the knobs in one place. */
@@ -28,6 +30,10 @@ export const AMBIENT = {
   /** smoothing: seconds it takes to get (mostly) louder / quieter. Bigger = slower, softer. */
   riseSeconds: 0.9,
   fallSeconds: 0.6,
+  /** a song from the music page starts: the background track goes quiet this fast. */
+  takeoverFallSeconds: 0.35,
+  /** the visitor scrolled out of the music page: the background track comes back this slowly. */
+  resumeSeconds: 2.6,
 }
 
 export interface Box {

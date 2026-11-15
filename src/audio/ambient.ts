@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { AMBIENT, baseLevel, coverage, smooth } from './ambientLevel'
-import { isDucked, onDuckChange } from './preview'
+import { isDucked, isTakeover, onDuckChange, setTakeover } from './preview'
 import { startAudioReactive } from './reactive'
 
 /**
@@ -69,6 +69,9 @@ let firstPlay = true
 
 let target = 0 // gain we are heading for
 let cur = 0 // gain right now
+let slowRise = false // coming back after the music page: fade in slowly
+let stuckTicks = 0 // watchdog: how many checks in a row the audio context refused to run
+let watchdog = 0
 
 let raf = 0
 let lastT = 0
@@ -92,9 +95,17 @@ function tick(now: number) {
   lastT = now
 
   const goal = muted || !unlocked ? 0 : target
-  const tau = goal > cur ? AMBIENT.riseSeconds : AMBIENT.fallSeconds
+  const tau =
+    goal > cur
+      ? slowRise
+        ? AMBIENT.resumeSeconds
+        : AMBIENT.riseSeconds
+      : isTakeover()
+        ? AMBIENT.takeoverFallSeconds
+        : AMBIENT.fallSeconds
   cur += (goal - cur) * (1 - Math.exp(-dt / tau))
   if (Math.abs(goal - cur) < 0.0003) cur = goal
+  if (cur >= goal) slowRise = false
   applyGain(cur)
 
   if (cur !== goal) {
@@ -128,6 +139,8 @@ function sync() {
     if (a.paused) {
       a.play().catch((err: unknown) => {
         if ((err as { name?: string } | null)?.name === 'NotAllowedError') relock()
+        // any other failure (AbortError from a pause that raced with this play, a hiccup while loading …)
+        // is retried by the watchdog below instead of leaving the track silently stopped
       })
     }
   }
@@ -270,10 +283,46 @@ function recompute() {
 
   const level = base * (1 - duck * (1 - AMBIENT.afterHoursDuck))
 
-  // a song preview that is playing silences the background track
-  target = isDucked() ? 0 : AMBIENT.normal * level
+  // A song played from the music page silences the background track, and it STAYS silent (even between
+  // songs) until the visitor scrolls out of the music page — then it fades back in slowly.
+  if (!nowIn && isTakeover()) {
+    setTakeover(false, false) // (no notify: we are already recomputing)
+    slowRise = true
+  }
+  if (isTakeover()) slowRise = false
+
+  target = isDucked() || isTakeover() ? 0 : AMBIENT.normal * level
   setUI({ active: base > 0.12 })
   sync()
+}
+
+/**
+ * Every 1.5 s, while the track is meant to be heard: make sure it really is playing.
+ * It fixes the "sometimes there is no music" cases that nothing else retried:
+ *   - a play() that was cancelled by a racing pause() (AbortError) left the track stopped until the next scroll
+ *   - the audio file failed to load once and never came back
+ *   - the browser suspended the audio context quietly: ask for it back, and if it keeps refusing,
+ *     show the "Tap for sound" chip again instead of staying silent for ever
+ */
+function guard() {
+  const a = audio
+  if (!running || !a || !unlocked) return
+  const wanted = target > 0.0005 && !muted && !document.hidden
+  if (!wanted) {
+    stuckTicks = 0
+    return
+  }
+  if (ctx && ctx.state !== 'running') {
+    void ctx.resume().catch(() => {})
+    if (++stuckTicks >= 3) {
+      stuckTicks = 0
+      relock()
+    }
+    return
+  }
+  stuckTicks = 0
+  if (a.error) a.load() // reload a file that failed
+  sync() // plays it again if something paused it
 }
 
 function schedule() {
@@ -309,9 +358,26 @@ export function startAmbientMusic(): () => void {
       cur = 0 // come back with a gentle fade-in instead of a jump
       applyGain(0)
     } else {
+      if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => {})
       recompute()
     }
   }
+
+  // If the browser / phone / another app pauses the track while it should be heard, start it again.
+  const onPaused = () => {
+    if (running && unlocked && !document.hidden) schedule()
+  }
+  // The file failed to load (flaky network): the watchdog reloads it.
+  const onError = () => {
+    window.setTimeout(guard, 1500)
+  }
+  const onPageShow = (e: PageTransitionEvent) => {
+    if (e.persisted) recompute()
+  }
+  audio.addEventListener('pause', onPaused)
+  audio.addEventListener('error', onError)
+  window.addEventListener('pageshow', onPageShow)
+  watchdog = window.setInterval(guard, 1500)
 
   window.addEventListener('scroll', schedule, { passive: true })
   window.addEventListener('resize', schedule)
@@ -330,6 +396,11 @@ export function startAmbientMusic(): () => void {
     window.removeEventListener('resize', schedule)
     window.removeEventListener('load', schedule)
     document.removeEventListener('visibilitychange', onVisibility)
+    window.removeEventListener('pageshow', onPageShow)
+    window.clearInterval(watchdog)
+    watchdog = 0
+    audio?.removeEventListener('pause', onPaused)
+    audio?.removeEventListener('error', onError)
     stopListeningForGesture()
     stopDuckWatch()
     stopReactive()
@@ -354,6 +425,9 @@ export function startAmbientMusic(): () => void {
     muted = false
     target = 0
     cur = 0
+    slowRise = false
+    stuckTicks = 0
+    setTakeover(false, false)
     inMusicZone = false
     duckArmed = false
     setUI({ unlocked: false, muted: false, active: false })

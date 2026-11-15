@@ -28,9 +28,12 @@ import { useInputMode } from '../audio/inputMode'
 import QuoteReel from './QuoteReel'
 import { useQuoteReveal } from './useQuoteReel'
 import PhotoFigure, { type ReadyTrack } from './PhotoFigure'
+import { AppleMusicIcon, InstagramIcon } from './SocialIcons'
+import { APPLE_MUSIC_URL, INSTAGRAM_URL } from '../data/socials'
 import { useDepth } from './useDepth'
 
 const EASE = [0.22, 1, 0.36, 1] as const
+const HEAD_LAG = 72 // px a card's title trails behind its photos by the time the card has passed
 
 // A single work item in a section.
 function WorkLine({
@@ -153,8 +156,14 @@ function SectionCard({
   const hasMusic = tracks.some(Boolean)
 
   // The title lags a little behind the photos, which adds a layer of depth.
+  // It only ever lags BEHIND (offset ≥ 0, to the right): it starts exactly in place while the card is
+  // still off-screen and drifts right as the card passes. Pulling it to the left (as before) made the
+  // title poke out of its card — the first letter showed on the previous page and the title crossed
+  // the divider line.
   const depth = useDepth(cardRef, trackX, vertical, Boolean(reduce))
-  const headX = useTransform(depth, (v) => (vertical ? 0 : v * -70))
+  const headX = useTransform(depth, (v) =>
+    vertical ? 0 : HEAD_LAG * Math.min(1, Math.max(0, (1.4 - v) / 2.8)),
+  )
 
   // A short message the first time the music section is on screen.
   const seen = useInView(cardRef, { amount: vertical ? 0.3 : 0.55, once: true })
@@ -613,6 +622,34 @@ function QuoteCard() {
       ref={quoteRef}
       className="wk-card wk-quote-card"
     >
+      {/* top left: Instagram · top right: Apple Music playlist (same size as the sound button) */}
+      <motion.a
+        className="corner-btn corner-left"
+        href={INSTAGRAM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Sachin on Instagram"
+        title="Instagram"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isInView ? 1 : 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+      >
+        <InstagramIcon aria-hidden="true" />
+      </motion.a>
+      <motion.a
+        className="corner-btn corner-right"
+        href={APPLE_MUSIC_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Open my playlist on Apple Music"
+        title="My playlist on Apple Music"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isInView ? 1 : 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+      >
+        <AppleMusicIcon aria-hidden="true" />
+      </motion.a>
+
       <div className="wk-quote-content">
         <motion.span
           className="wk-quote-label"

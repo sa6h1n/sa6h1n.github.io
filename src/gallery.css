@@ -8,10 +8,16 @@
 
 /* the layer that scroll depth moves (translate only, so photos stay sharp) */
 .wk-depth { width: 100%; }
-.wk-depth.reveal { opacity: 0; }
+/* first time it appears: it comes out of the dark and out of focus (one cheap transition) */
+.wk-depth.reveal { opacity: 0; filter: blur(8px); }
 .wk-depth.reveal.is-in {
   opacity: 1;
-  transition: opacity 0.9s ease calc(var(--i, 0) * 70ms);
+  filter: none;
+  transition: opacity 0.9s ease calc(var(--i, 0) * 70ms), filter 0.9s ease calc(var(--i, 0) * 70ms);
+}
+/* desktop: the layer that flies in from depth */
+@media (min-width: 641px) {
+  .wk-depth { will-change: transform; backface-visibility: hidden; }
 }
 
 .wk-photo {
@@ -25,11 +31,6 @@
   .wk-photo-grid { gap: 10px; padding-bottom: 24px; }
   .wk-cell:nth-child(even) { transform: translateY(24px); }
   .wk-photo { aspect-ratio: 3 / 4; }
-  .wk-depth.reveal { filter: blur(10px); }
-  .wk-depth.reveal.is-in {
-    filter: none;
-    transition: opacity 0.9s ease calc(var(--i, 0) * 70ms), filter 0.9s ease calc(var(--i, 0) * 70ms);
-  }
   .wk-photo img { will-change: transform; }
 }
 
@@ -155,7 +156,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wk-depth.reveal { opacity: 1; }
+  .wk-depth.reveal { opacity: 1; filter: none; }
   .wk-note, .wk-eq i, .wk-music-dot::after { animation: none; }
   .wk-eq i { transform: scaleY(0.7); }
 }

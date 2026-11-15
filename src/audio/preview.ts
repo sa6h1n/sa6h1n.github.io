@@ -30,6 +30,10 @@ let ctx: AudioContext | null = null
 let gain: GainNode | null = null
 let routed = false
 
+// "Takeover": once a song has played from the music page, the background track stays silent until the
+// visitor scrolls out of that page (even between songs, or after they paused). ambient.ts reads this.
+let takeover = false
+
 const idListeners = new Set<() => void>()
 const duckListeners = new Set<() => void>()
 
@@ -45,11 +49,36 @@ function setCurrent(id: string | null) {
 
 function getAudio(): HTMLAudioElement {
   if (!audio) {
-    audio = new Audio()
-    audio.preload = 'auto'
-    audio.loop = true
+    const a = new Audio()
+    a.preload = 'auto'
+    a.loop = true
+
+    // If something OUTSIDE this file stops the song (a phone call, headphones unplugged, the OS media
+    // key, a network error) the "playing" state must not stay stuck — a stuck state kept the
+    // background track silent for good. Our own stops set currentId to null first, so they never land here.
+    const lost = () => {
+      if (currentId === null || pendingId !== null) return
+      token++
+      setCurrent(null)
+    }
+    a.addEventListener('pause', lost)
+    a.addEventListener('error', () => {
+      lost()
+      setTakeover(false) // a broken song must not leave the site silent
+    })
+    audio = a
   }
   return audio
+}
+
+/** True while the background track must stay quiet because a song was played from the music page. */
+export const isTakeover = () => takeover
+
+/** Turn the takeover on / off. `notify = false` is for callers that are already recomputing. */
+export function setTakeover(on: boolean, notify = true) {
+  if (takeover === on) return
+  takeover = on
+  if (notify) duckListeners.forEach((l) => l())
 }
 
 /**
@@ -167,6 +196,7 @@ export function playPreview(id: string, src: string, startAt = 0): Promise<PlayR
       }
       pendingId = null
       setCurrent(id)
+      setTakeover(true)
       fadeTo(PREVIEW_VOLUME, FADE_IN_MS)
       return 'playing'
     })
