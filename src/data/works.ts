@@ -14,6 +14,21 @@ export interface WorkGroup {
   items: string[]
 }
 
+/**
+ * A song that plays when someone hovers (desktop) or taps (phone) a photo.
+ * The audio file lives in `public/hobbies/music/`. If the file isn't there,
+ * that photo simply stays a normal photo.
+ */
+export interface MusicTrack {
+  /** file name inside public/hobbies/music/, e.g. '01.mp3' */
+  file: string
+  /** shown over the photo while it plays — both optional */
+  title?: string
+  artist?: string
+  /** start the preview this many seconds into the song (e.g. the chorus) */
+  start?: number
+}
+
 export interface WorkSection {
   id: string
   no: string
@@ -24,6 +39,8 @@ export interface WorkSection {
   awards?: string[]
   footer?: string
   galleryImages?: string[]
+  /** tracks[i] belongs to galleryImages[i]; leave a slot empty for a photo with no song */
+  tracks?: (MusicTrack | null)[]
 }
 
 export interface WorksLang {
@@ -63,6 +80,20 @@ const sections: WorkSection[] = [
       (_, i) =>
         `${import.meta.env.BASE_URL}hobbies/music/${String(i + 1).padStart(2, '0')}.webp`
     ),
+    // ── Music ────────────────────────────────────────────────────────────
+    // Drop your songs into  public/hobbies/music/  named 01.mp3 … 06.mp3
+    // (01 plays on photo 01, and so on). Photos without a file stay plain.
+    // Optional: add a title / artist (shown while it plays) and `start`
+    // (seconds into the song). Example:
+    //   { file: '01.mp3', title: 'Street Spirit', artist: 'Radiohead', start: 20 }
+    tracks: [
+      { file: '01.mp3' },
+      { file: '02.mp3' },
+      { file: '03.mp3' },
+      { file: '04.mp3' },
+      { file: '05.mp3' },
+      { file: '06.mp3' },
+    ],
   },
   {
     id: 'product',

@@ -154,3 +154,64 @@
 @media (prefers-reduced-motion: reduce) {
   .quote-dots-wrap:not(.is-used) .quote-dot { animation: none; }
 }
+
+/* ───────── Background music: "Tap for sound" chip + mute button ───────── */
+.sound-dock {
+  position: fixed;
+  left: 24px;
+  bottom: 28px;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.sound-dock.is-on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.sound-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(244, 241, 234, 0.28);
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: rgba(244, 241, 234, 0.92);
+  font: 500 11px/1 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.sound-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(244, 241, 234, 0.55); }
+.sound-btn:focus-visible { outline: 2px solid #ffd9b3; outline-offset: 3px; }
+.sound-toggle { padding: 11px; }
+
+/* three little equaliser bars; they stop and shrink when the sound is off */
+.sound-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; flex: none; }
+.sound-bars i {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: #ffd9b3;
+  transform-origin: bottom;
+  animation: wkEq 0.9s ease-in-out infinite;
+}
+.sound-bars i:nth-child(2) { animation-delay: -0.3s; }
+.sound-bars i:nth-child(3) { animation-delay: -0.6s; }
+.sound-prompt .sound-bars i { animation-duration: 1.4s; }
+.sound-toggle.is-muted .sound-bars i { animation: none; transform: scaleY(0.25); opacity: 0.55; }
+
+@media (max-width: 640px) {
+  .sound-dock { left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sound-bars i { animation: none; transform: scaleY(0.6); }
+  .sound-dock { transition: none; }
+}

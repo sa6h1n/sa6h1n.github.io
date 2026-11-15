@@ -39,6 +39,11 @@ const IS_MOBILE =
   (window.matchMedia?.('(pointer: coarse)').matches === true ||
     window.innerWidth <= 640)
 
+// How long (ms) after the last mouse / trackpad movement the eyes and head
+// drift back to looking straight ahead. On touch screens this happens as soon
+// as the finger is lifted.
+const LOOK_RETURN_DELAY_MS = 1200
+
 function GradientBackground() {
   const top = '#2f20fd'
   const bottom = '#8adbf6'
@@ -199,6 +204,22 @@ function Man2({
 
     mobileOffsetX: 0,
     mobileOffsetY: 0,
+
+    // Home-screen framing
+    heroPullback: 1.2, // > 1 pulls the camera back => smaller character
+    heroFit: 0.84, // narrow screens: head + hair fill at most this much of the width
+    heroHeadWidth: 0.93, // head + hair width in model units (before `scale`)
+    heroCenterY: -0.04, // narrow screens: vertical position of the eyes (0 = middle)
+    heroBottomMargin: 1.04, // keep the bottom edge of the bust at least this far off-screen (1 = screen edge)
+  }
+
+  // Head / body animation
+  const motion = {
+    followYaw: 0.28, // head turn towards the pointer (radians at screen edge)
+    followPitch: 0.14,
+    followRoll: 0.06,
+    introDelay: 0.6, // seconds after the scene mounts
+    introDuration: 1.8,
   }
 
   const eye = {
@@ -222,6 +243,10 @@ function Man2({
   const {
     model,
     eyes,
+    eyeMid,
+    bustBottom,
+    charNode,
+    charBase,
     points,
     startPoint,
     glbCam,
@@ -235,6 +260,7 @@ function Man2({
     let startPoint: any = null
     let glbCam: any = null
     let focusNode: any = null
+    let charNode: any = null
 
     clone.traverse((o: any) => {
       if (o.isMesh) {
@@ -243,6 +269,8 @@ function Man2({
       }
 
       if (o.isCamera) glbCam = o
+
+      if (o.name === 'MY_CHARACTER') charNode = o
 
       if (
         o.name === 'focus-start' ||
@@ -296,6 +324,20 @@ function Man2({
       })
     }
 
+    // Midpoint between the eyes (model space) = centre of the face.
+    clone.updateMatrixWorld(true)
+    const eyeMid = new THREE.Vector3()
+    if (eyes.length) {
+      const tmp = new THREE.Vector3()
+      eyes.forEach((e) => eyeMid.add(e.obj.getWorldPosition(tmp)))
+      eyeMid.divideScalar(eyes.length)
+    }
+
+    // Lowest point of the bust (model space), so the camera can keep its cut
+    // edge out of view on tall, narrow screens.
+    const bust = new THREE.Box3()
+    if (charNode) bust.setFromObject(charNode)
+
     const pts = POINTS.map((n) => pmap[n] || null)
 
     const works =
@@ -320,6 +362,16 @@ function Man2({
     return {
       model: clone,
       eyes,
+      eyeMid,
+      bustBottom: charNode ? bust.min.y : -1,
+      charNode,
+      charBase: charNode
+        ? {
+            pos: charNode.position.clone(),
+            scale: charNode.scale.clone(),
+            quat: charNode.quaternion.clone(),
+          }
+        : null,
       points: pts,
       startPoint: start,
       glbCam,
@@ -389,51 +441,101 @@ function Man2({
 
   const mouse = useRef({ x: 0, y: 0 })
   const smouse = useRef({ x: 0, y: 0 })
-  // Body movement
-const bodyRef = useRef<THREE.Group>(null)
 
-// Beat state: which way the body leans on the next drum hit.
-const beat = useRef({ sign: 1, last: 0 })
+  // `active` = the person is currently pointing / touching.
+  // `w` eases 0 -> 1 while active and back to 0 on release, and scales every
+  // pointer-driven movement (eyes, head turn, camera parallax). So when the
+  // finger lifts, the eyes glide back to looking straight ahead.
+  const pointer = useRef({ active: false, w: 0 })
 
-const bodyMotion = useRef({
-  rotationX: 0,
-  rotationY: 0,
-  rotationZ: 0,
-})
+  // Idle / follow motion of the head
+  const headMotion = useRef({ x: 0, y: 0, z: 0 })
+  const headEuler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
+  const headQuat = useRef(new THREE.Quaternion())
+  const charBaseQuat = useRef(new THREE.Quaternion())
+  const charLastQuat = useRef(new THREE.Quaternion(0, 0, 0, 0))
+  const introStart = useRef<number | null>(null)
 
- useEffect(() => {
-  const updatePointer = (clientX: number, clientY: number) => {
-    mouse.current.x =
-      (clientX / window.innerWidth) * 2 - 1
+  // Scratch vectors for the home-screen framing
+  const heroRef = useRef(new THREE.Vector3())
+  const heroHead = useRef(new THREE.Vector3())
+  const heroInv = useRef(new THREE.Quaternion())
+  const heroBottom = useRef(new THREE.Vector3())
 
-    mouse.current.y =
-      -((clientY / window.innerHeight) * 2 - 1)
-  }
+  useEffect(() => {
+    let idleTimer: number | undefined
 
-  const onMove = (e: PointerEvent) => {
-    updatePointer(e.clientX, e.clientY)
-  }
+    const release = () => {
+      window.clearTimeout(idleTimer)
+      pointer.current.active = false
+    }
 
-  const onTouchMove = (e: TouchEvent) => {
-    const touch = e.touches[0]
-    if (!touch) return
+    const hold = (isTouch: boolean) => {
+      pointer.current.active = true
+      window.clearTimeout(idleTimer)
 
-    updatePointer(touch.clientX, touch.clientY)
-  }
+      // A mouse / trackpad can't tell us when the hand lifts, so treat
+      // "no movement for a moment" as letting go. Touch uses touchend.
+      if (!isTouch) {
+        idleTimer = window.setTimeout(release, LOOK_RETURN_DELAY_MS)
+      }
+    }
 
-  window.addEventListener('pointermove', onMove, {
-    passive: true,
-  })
+    const updatePointer = (clientX: number, clientY: number) => {
+      mouse.current.x = (clientX / window.innerWidth) * 2 - 1
+      mouse.current.y = -((clientY / window.innerHeight) * 2 - 1)
+    }
 
-  window.addEventListener('touchmove', onTouchMove, {
-    passive: true,
-  })
+    const onMove = (e: PointerEvent) => {
+      updatePointer(e.clientX, e.clientY)
+      hold(e.pointerType === 'touch')
+    }
 
-  return () => {
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('touchmove', onTouchMove)
-  }
-}, [])
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') release()
+    }
+
+    const onTouch = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      if (!touch) return
+
+      updatePointer(touch.clientX, touch.clientY)
+      hold(true)
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) release()
+    }
+
+    const onVisibility = () => {
+      if (document.hidden) release()
+    }
+
+    window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('pointerdown', onMove, { passive: true })
+    window.addEventListener('pointerup', onPointerUp, { passive: true })
+    window.addEventListener('touchstart', onTouch, { passive: true })
+    window.addEventListener('touchmove', onTouch, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
+    window.addEventListener('touchcancel', release, { passive: true })
+    window.addEventListener('blur', release)
+    document.documentElement.addEventListener('mouseleave', release)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      window.clearTimeout(idleTimer)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerdown', onMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('touchmove', onTouch)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', release)
+      window.removeEventListener('blur', release)
+      document.documentElement.removeEventListener('mouseleave', release)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
 
   const isMobile = useRef(
     typeof window !== 'undefined' &&
@@ -472,49 +574,15 @@ const bodyMotion = useRef({
   useFrame((_, dt) => {
     const a = 1 - Math.pow(cam.damping, dt)
 
-    
-// Body movement: stronger idle sway + touch-following rotation.
-if (bodyRef.current && !REDUCED_MOTION) {
-  const time = performance.now() * 0.001
+    // Ease the pointer weight: quick to engage, slower to settle back.
+    const P = pointer.current
+    const pTarget = P.active ? 1 : 0
+    P.w += (pTarget - P.w) * (1 - Math.exp(-(pTarget > P.w ? 9 : 3.2) * dt))
+    if (pTarget === 0 && P.w < 0.003) P.w = 0
 
-  // More visible idle movement
-  const idleX = Math.sin(time * 0.8) * 0.12
-  const idleY = Math.sin(time * 1.2) * 0.06
-  const idleZ = Math.sin(time * 0.65) * 0.07
+    const px = mouse.current.x * P.w
+    const py = mouse.current.y * P.w
 
-  // Stronger movement following the finger/mouse
-  const touchGain = isMobile.current ? 2.2 : 1.6
-
-  const targetX = idleX - mouse.current.y * 0.28 * touchGain
-  const targetY = mouse.current.x * 0.32 * touchGain
-  // Lean left/right on every drum hit, alternating sides.
-  const kick = audioLevel.kick
-  if (kick > 0.6 && beat.current.last <= 0.6) beat.current.sign *= -1
-  beat.current.last = kick
-
-  const targetZ =
-    idleZ - mouse.current.x * 0.12 * touchGain + beat.current.sign * kick * 0.07
-
-  const smoothing = 1 - Math.exp(-3.5 * dt)
-
-  bodyMotion.current.rotationX +=
-    (targetX - bodyMotion.current.rotationX) * smoothing
-  bodyMotion.current.rotationY +=
-    (targetY - bodyMotion.current.rotationY) * smoothing
-  bodyMotion.current.rotationZ +=
-    (targetZ - bodyMotion.current.rotationZ) * smoothing
-
-  bodyRef.current.rotation.set(
-    bodyMotion.current.rotationX,
-    bodyMotion.current.rotationY,
-    bodyMotion.current.rotationZ,
-  )
-
-  // Gentle up-and-down movement
-  // (and bounces a little with the bass)
-  bodyRef.current.position.y =
-    Math.sin(time * 1.4) * 0.06 + kick * 0.05 + audioLevel.bass * 0.025
-}
     if (!anchorEls.current) {
       anchorEls.current = POINTS.map((n) =>
         document.querySelector(`[data-point="${n}"]`),
@@ -683,6 +751,69 @@ if (bodyRef.current && !REDUCED_MOTION) {
       mixer.update(0)
     }
 
+    // ---- Character animation -------------------------------------------
+    // Only the character is animated (NOT the whole model): the GLB camera is
+    // part of the same model, so moving the whole thing would move the camera
+    // with it and cancel out any visible motion.
+    const nowSec = performance.now() * 0.001
+
+    if (charNode && charBase && !REDUCED_MOTION) {
+      if (introStart.current === null) introStart.current = nowSec
+
+      // Intro: he turns from the side, rises a little and settles facing you.
+      const it = THREE.MathUtils.clamp(
+        (nowSec - introStart.current - motion.introDelay) /
+          motion.introDuration,
+        0,
+        1,
+      )
+      const introLeft = Math.pow(1 - it, 3)
+
+      // Calmer once the gallery section takes over.
+      const k = 1 - 0.6 * smoothOff
+
+      const idleYaw =
+        (Math.sin(nowSec * 0.55) * 0.09 + Math.sin(nowSec * 1.35) * 0.03) * k
+      const idlePitch = Math.sin(nowSec * 0.85) * 0.05 * k
+      const idleRoll = Math.sin(nowSec * 0.7) * 0.035 * k
+
+      const targetY = idleYaw + px * motion.followYaw * k + introLeft * 0.55
+      const targetX = idlePitch - py * motion.followPitch * k
+      const targetZ = idleRoll - px * motion.followRoll * k
+
+      const sm = 1 - Math.exp(-4 * dt)
+      const hm = headMotion.current
+      hm.x += (targetX - hm.x) * sm
+      hm.y += (targetY - hm.y) * sm
+      hm.z += (targetZ - hm.z) * sm
+
+      headEuler.current.set(hm.x, hm.y, hm.z)
+      headQuat.current.setFromEuler(headEuler.current)
+
+      // The scroll animation owns this node's rotation. It only writes when its
+      // value changes, so remember its value and layer the head motion on top.
+      if (!charNode.quaternion.equals(charLastQuat.current)) {
+        charBaseQuat.current.copy(charNode.quaternion)
+      }
+      charNode.quaternion
+        .copy(headQuat.current)
+        .multiply(charBaseQuat.current)
+      charLastQuat.current.copy(charNode.quaternion)
+
+      // Gentle float + breathing (the character does not react to the music).
+      charNode.position.y =
+        charBase.pos.y +
+        Math.sin(nowSec * 1.3) * 0.012 -
+        introLeft * 0.06
+
+      const breath = Math.sin(nowSec * 1.6) * 0.007
+      charNode.scale.set(
+        charBase.scale.x * (1 - breath * 0.5),
+        charBase.scale.y * (1 + breath),
+        charBase.scale.z * (1 - breath * 0.5),
+      )
+    }
+
     if (frameRef) {
       frameRef.current = frame
     }
@@ -794,11 +925,9 @@ if (bodyRef.current && !REDUCED_MOTION) {
 
       const me = 1 - Math.pow(cam.parallaxEase, dt)
 
-      smouse.current.x +=
-        (mouse.current.x - smouse.current.x) * me
+      smouse.current.x += (px - smouse.current.x) * me
 
-      smouse.current.y +=
-        (mouse.current.y - smouse.current.y) * me
+      smouse.current.y += (py - smouse.current.y) * me
 
       const ax = THREE.MathUtils.degToRad(
         cam.parallax,
@@ -814,16 +943,66 @@ if (bodyRef.current && !REDUCED_MOTION) {
         paraEuler.current,
       )
 
+      // Home-screen framing. heroW is 1 on the landing view and fades to 0
+      // as the page scrolls into the resume, so nothing else changes.
+      const heroW =
+        1 - THREE.MathUtils.smoothstep(s, -1, 0)
+
+      const tanHalf = Math.tan(
+        THREE.MathUtils.degToRad(glbCam.fov) / 2,
+      )
+      const aspect = camera.aspect || 1
+      const dist0 = camPos.current.distanceTo(focusRef.current)
+
+      // Narrow (portrait) screens: pull back far enough that the whole head
+      // fits across the width instead of being cropped.
+      const fitPull =
+        (cam.heroHeadWidth * scale) /
+        cam.heroFit /
+        (2 * dist0 * tanHalf * aspect)
+
+      const heroPull = Math.max(cam.heroPullback, fitPull)
+      const restPull = isMobile.current ? cam.mobilePullback : 1
+      const pull = THREE.MathUtils.lerp(restPull, heroPull, heroW)
+
+      // Where the face sits relative to the un-parallaxed camera, so we can
+      // slide the camera sideways (and up/down on phones) to centre it.
+      heroRef.current
+        .copy(camPos.current)
+        .sub(focusRef.current)
+        .multiplyScalar(pull)
+        .add(focusRef.current)
+
+      heroInv.current.copy(camQuat.current).invert()
+
+      heroHead.current
+        .set(posX, posY, posZ)
+        .addScaledVector(eyeMid, scale)
+        .sub(heroRef.current)
+        .applyQuaternion(heroInv.current)
+
+      const heroDx = heroHead.current.x
+      const heroDy =
+        heroHead.current.y -
+        cam.heroCenterY * (-heroHead.current.z) * tanHalf
+      const portraitW =
+        1 - THREE.MathUtils.smoothstep(aspect, 0.75, 1.1)
+
+      // The bust has a cut edge at the bottom. Never let it slide into view.
+      heroBottom.current
+        .set(posX, posY + scale * bustBottom, posZ)
+        .sub(heroRef.current)
+        .applyQuaternion(heroInv.current)
+
+      const heroDyMin =
+        heroBottom.current.y +
+        cam.heroBottomMargin * (-heroBottom.current.z) * tanHalf
+
       tmpVec.current
         .copy(camPos.current)
         .sub(focusRef.current)
         .applyQuaternion(paraQuat.current)
-
-      if (isMobile.current) {
-        tmpVec.current.multiplyScalar(
-          cam.mobilePullback,
-        )
-      }
+        .multiplyScalar(pull)
 
       tmpVec.current.add(focusRef.current)
 
@@ -860,6 +1039,11 @@ if (bodyRef.current && !REDUCED_MOTION) {
         camera.translateX(cam.mobileOffsetX)
         camera.translateY(cam.mobileOffsetY)
       }
+
+      camera.translateX(heroDx * heroW)
+      camera.translateY(
+        Math.max(heroDy * portraitW, heroDyMin) * heroW,
+      )
 
       if (camera.fov !== glbCam.fov) {
         camera.fov = glbCam.fov
@@ -919,10 +1103,14 @@ if (bodyRef.current && !REDUCED_MOTION) {
       THREE.MathUtils.degToRad(eye.crossEye) *
       convWeight
 
-    for (const e of eyes) {
-      const yaw = yawBase - e.sx * convRad
+    // pointer weight: 1 while pointing / touching, eases to 0 on release so
+    // the eyes return to the model's own straight-ahead pose.
+    const lookW = pointer.current.w
 
-      tmpEuler.current.set(pitch, yaw, 0)
+    for (const e of eyes) {
+      const yaw = (yawBase - e.sx * convRad) * lookW
+
+      tmpEuler.current.set(pitch * lookW, yaw, 0)
 
       tmpQuat.current.setFromEuler(
         tmpEuler.current,
@@ -945,9 +1133,7 @@ if (bodyRef.current && !REDUCED_MOTION) {
     rotation={[0, (rotationY * Math.PI) / 180, 0]}
     scale={scale}
   >
-    <group ref={bodyRef}>
-      <primitive object={model} />
-    </group>
+    <primitive object={model} />
   </group>
 )
 }

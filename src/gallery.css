@@ -1,0 +1,161 @@
+/* ============================================================================
+   Gallery: portrait photo wall, scroll depth, and the music-cover player.
+   Loaded after styles.css / enhance.css, so it can refine their photo rules.
+   ========================================================================== */
+
+/* ───────── Photo wall: the original square 3 × 2 grid ───────── */
+.wk-cell { position: relative; min-width: 0; }
+
+/* the layer that scroll depth moves (translate only, so photos stay sharp) */
+.wk-depth { width: 100%; }
+.wk-depth.reveal { opacity: 0; }
+.wk-depth.reveal.is-in {
+  opacity: 1;
+  transition: opacity 0.9s ease calc(var(--i, 0) * 70ms);
+}
+
+.wk-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  transition-property: transform, border-color, box-shadow;
+}
+
+/* ───────── Phones: portrait photos, two columns, the right one dropped a little ───────── */
+@media (max-width: 640px) {
+  .wk-photo-grid { gap: 10px; padding-bottom: 24px; }
+  .wk-cell:nth-child(even) { transform: translateY(24px); }
+  .wk-photo { aspect-ratio: 3 / 4; }
+  .wk-depth.reveal { filter: blur(10px); }
+  .wk-depth.reveal.is-in {
+    filter: none;
+    transition: opacity 0.9s ease calc(var(--i, 0) * 70ms), filter 0.9s ease calc(var(--i, 0) * 70ms);
+  }
+  .wk-photo img { will-change: transform; }
+}
+
+/* the picture sits slightly larger than its frame and drifts inside it as you scroll */
+.wk-photo img {
+  transition: opacity 0.35s ease, filter 0.3s ease;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* photos far from the middle of the screen sink into the dark */
+.wk-dim {
+  position: absolute;
+  inset: 0;
+  background: #080a10;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* ───────── Music covers ───────── */
+.wk-photo.has-track { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wk-photo.has-track:focus-visible { outline: 2px solid #ffd9b3; outline-offset: 3px; }
+
+/* a small ♪ says "this one plays" without adding clutter */
+.wk-note {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  color: #ffd9b3;
+  background: rgba(10, 12, 18, 0.5);
+  border: 1px solid rgba(255, 217, 179, 0.35);
+  pointer-events: none;
+  animation: wkNote 3.2s ease-in-out infinite;
+}
+@keyframes wkNote {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(-2px); opacity: 1; }
+}
+
+/* the cover that is playing glows; the others step back */
+.wk-photo.is-playing {
+  border-color: rgba(255, 217, 179, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 217, 179, 0.3), 0 18px 60px rgba(255, 190, 130, 0.22);
+}
+.wk-photo-grid:has(.wk-photo.is-playing) .wk-photo:not(.is-playing) img { opacity: 0.42; }
+
+/* "Now playing" message */
+.wk-now {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 52px);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.66);
+  border: 1px solid rgba(244, 241, 234, 0.16);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #f4f1ea;
+  pointer-events: none;
+}
+.wk-now.is-compact { padding: 8px 10px; }
+.wk-now-text {
+  font: 500 11px/1.25 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* little equaliser bars */
+.wk-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; flex: none; }
+.wk-eq i {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: #ffd9b3;
+  transform-origin: bottom;
+  animation: wkEq 0.9s ease-in-out infinite;
+}
+.wk-eq i:nth-child(1) { animation-delay: -0.1s; }
+.wk-eq i:nth-child(2) { animation-delay: -0.45s; }
+.wk-eq i:nth-child(3) { animation-delay: -0.25s; }
+.wk-eq i:nth-child(4) { animation-delay: -0.65s; }
+@keyframes wkEq {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+
+/* the first-visit hint over the first cover: a pulsing dot + a few words */
+.wk-music-dot {
+  position: relative;
+  flex: none;
+  margin: 0 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd9b3;
+}
+.wk-music-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid #ffd9b3;
+  animation: wkPing 1.8s ease-out infinite;
+}
+@keyframes wkPing {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wk-depth.reveal { opacity: 1; }
+  .wk-note, .wk-eq i, .wk-music-dot::after { animation: none; }
+  .wk-eq i { transform: scaleY(0.7); }
+}

@@ -1,24 +1,95 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  AnimatePresence,
+  motion,
+  useInView,
+  useReducedMotion,
+  useTransform,
+  type MotionValue,
+} from 'framer-motion'
 import { EFFECTS } from '../data/effects'
+import { playPreview, stopPreview, usePreviewId } from '../audio/preview'
+import { getInputMode } from '../audio/inputMode'
+import { useDepth } from './useDepth'
+
+/** A song that is ready to play on a photo (the file exists). */
+export interface ReadyTrack {
+  id: string
+  src: string
+  file: string
+  /** the audio file isn't there yet (only used while developing, to show how it will look) */
+  missing?: boolean
+  title?: string
+  artist?: string
+  start?: number
+}
 
 interface Props {
   src: string
   alt: string
   /** 0-based position in its gallery */
   index: number
+  /** the gallery strip's horizontal offset (desktop) */
+  trackX: MotionValue<number>
+  /** phones: the gallery is a normal vertical page */
+  vertical: boolean
+  /** if set, hovering (mouse) or tapping (touch) this photo plays the song */
+  track?: ReadyTrack | null
+  /** a short message shown over this photo for a few seconds ("Hover to play" / "Tap to play") */
+  hint?: string | null
 }
 
-const MAX_TILT = 9 // degrees
+const MAX_TILT = 9 // degrees, hover tilt toward the cursor
+const HOVER_DWELL_MS = 220 // pointer must rest on a cover this long before music starts
+const CAPTION_MS = 4200 // the "now playing" message stays this long, then shrinks to the bars
+const BLOCKED_MS = 3200
+
+// every photo sits at a slightly different "depth", so they drift at different speeds
+const DEPTHS = [0.7, 1.15, 0.85, 1.2, 0.75, 1.05]
+
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
+
+// Scrolling the page slides covers under a resting cursor: don't treat that as a hover.
+let lastScroll = 0
+if (typeof window !== 'undefined') {
+  window.addEventListener('scroll', () => (lastScroll = performance.now()), { passive: true })
+}
 
 /**
- * A gallery photo. With a mouse it tilts toward the cursor, a soft glare follows the pointer
- * and film grain flickers over it. Touch screens and reduced-motion visitors get the plain photo.
+ * A gallery photo.
+ *  - Scroll: it turns toward you as it passes the middle of the screen, recedes at the edges,
+ *    and the picture drifts inside its frame (parallax).
+ *  - Mouse: tilts toward the cursor with a soft glare and film grain.
+ *  - Music (only when `track` is set): hover a cover to hear its song, or tap on a phone.
  */
-export default function PhotoFigure({ src, alt, index }: Props) {
-  const ref = useRef<HTMLElement>(null)
+export default function PhotoFigure({ src, alt, index, trackX, vertical, track, hint }: Props) {
+  const cellRef = useRef<HTMLDivElement>(null)
+  const figRef = useRef<HTMLElement>(null)
+  const reduce = useReducedMotion()
 
+  // ───────── scroll depth ─────────
+  const p = useDepth(cellRef, trackX, vertical, Boolean(reduce))
+  const d = DEPTHS[index % DEPTHS.length]
+
+  // Desktop: flat (2D) movement only, so the square photos stay sharp.
+  // Phones: the portrait photos also lean back and recede a little at the screen edges.
+  // Each photo drifts up or down by a few pixels at its own rate as it crosses the screen
+  // (small enough that neighbours never touch), so the grid ripples instead of sliding as a block.
+  const y = useTransform(p, (v) =>
+    vertical ? -v * d * 22 : -clamp(v, -1.2, 1.2) * (d - 0.95) * 30,
+  )
+  const rotateX = useTransform(p, (v) => (vertical ? v * -9 : 0))
+  const z = useTransform(p, (v) => (vertical ? -Math.pow(Math.abs(v), 1.4) * 70 : 0))
+  const imgX = useTransform(p, (v) => (vertical ? '0%' : `${-clamp(v, -1.2, 1.2) * 3.5}%`))
+  const imgY = useTransform(p, (v) => (vertical ? `${clamp(v, -1.2, 1.2) * 8}%` : '0%'))
+  const dim = useTransform(p, (v) => Math.min(1, Math.abs(v)) * 0.4)
+
+  // fade + un-blur the first time it scrolls into view
+  const seen = useInView(cellRef, { once: true, amount: 0.15 })
+
+  // ───────── hover tilt / glare (mouse + pen only) ─────────
   useEffect(() => {
-    const el = ref.current
+    const el = figRef.current
     if (!el || !EFFECTS.photoTilt) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
 
@@ -60,12 +131,187 @@ export default function PhotoFigure({ src, alt, index }: Props) {
     }
   }, [])
 
+  // ───────── music ─────────
+  const previewId = usePreviewId()
+  const playing = Boolean(track) && previewId === track?.id
+  const [expanded, setExpanded] = useState(false) // full "now playing" message visible
+  const [notice, setNotice] = useState<string | null>(null) // short message: "Click / Tap to play", or a dev hint
+  const dwell = useRef<number | undefined>(undefined)
+  const blockedTimer = useRef<number | undefined>(undefined)
+  const pausedByClick = useRef(false) // clicked to pause: stay quiet until the pointer leaves
+
+  const flash = (text: string) => {
+    setNotice(text)
+    window.clearTimeout(blockedTimer.current)
+    blockedTimer.current = window.setTimeout(() => setNotice(null), BLOCKED_MS)
+  }
+
+  const start = () => {
+    if (!track) return
+    if (track.missing) {
+      flash(`Add ${track.file} to public/hobbies/music`)
+      return
+    }
+    void playPreview(track.id, track.src, track.start).then((result) => {
+      if (result === 'blocked') flash(getInputMode() === 'touch' ? 'Tap to play' : 'Click to play')
+    })
+  }
+
+  const armHover = () => {
+    window.clearTimeout(dwell.current)
+    dwell.current = window.setTimeout(() => {
+      dwell.current = undefined
+      if (performance.now() - lastScroll < 160) return // page is scrolling under the cursor
+      if (!pausedByClick.current) start()
+    }, HOVER_DWELL_MS)
+  }
+
+  const isMouse = (e: ReactPointerEvent) => e.pointerType === 'mouse' || e.pointerType === 'pen'
+
+  const onPointerEnter = (e: ReactPointerEvent) => {
+    if (track && isMouse(e)) armHover()
+  }
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (track && isMouse(e) && !playing && dwell.current === undefined && !pausedByClick.current) armHover()
+  }
+  const onPointerLeave = (e: ReactPointerEvent) => {
+    if (!track) return
+    window.clearTimeout(dwell.current)
+    dwell.current = undefined
+    pausedByClick.current = false
+    setNotice(null)
+    if (isMouse(e)) stopPreview(track.id) // hover music ends with the hover
+  }
+  const toggle = () => {
+    if (!track) return
+    window.clearTimeout(dwell.current)
+    dwell.current = undefined
+    if (playing) {
+      pausedByClick.current = true
+      stopPreview(track.id)
+    } else {
+      pausedByClick.current = false
+      setNotice(null)
+      start()
+    }
+  }
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (track && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      toggle()
+    }
+  }
+
+  // the message opens for a few seconds, then shrinks to the little bars
+  useEffect(() => {
+    if (!playing) {
+      setExpanded(false)
+      return
+    }
+    setExpanded(true)
+    const t = window.setTimeout(() => setExpanded(false), CAPTION_MS)
+    return () => window.clearTimeout(t)
+  }, [playing])
+
+  // Unmounting stops this photo's song. (Scrolling away from the whole music page is handled
+  // in Works.tsx — the song keeps playing while you look at the other covers.)
+  useEffect(() => {
+    if (!track) return
+    const id = track.id
+    return () => {
+      stopPreview(id)
+      window.clearTimeout(dwell.current)
+      window.clearTimeout(blockedTimer.current)
+    }
+  }, [track])
+
+  const showHint = Boolean(hint) && !playing && !notice
+
+  const label = track?.title
+    ? `${track.title}${track.artist ? ` — ${track.artist}` : ''}`
+    : 'Now playing'
+
   return (
-    <figure ref={ref} className="wk-photo tilt">
-      <img src={src} alt={alt} loading="lazy" decoding="async" />
-      {EFFECTS.photoGrain && <span className="film-grain" aria-hidden="true" />}
-      <span className="film-glare" aria-hidden="true" />
-      <figcaption>{String(index + 1).padStart(2, '0')}</figcaption>
-    </figure>
+    <div ref={cellRef} className="wk-cell" style={{ ['--i' as string]: index }}>
+      <motion.div
+        className={`wk-depth reveal${seen || reduce ? ' is-in' : ''}`}
+        style={vertical ? { y, z, rotateX, transformPerspective: 900 } : { y }}
+      >
+        <figure
+          ref={figRef}
+          className={[
+            'wk-photo tilt',
+            track ? 'has-track' : '',
+            playing ? 'is-playing' : '',
+          ].join(' ')}
+          onPointerEnter={onPointerEnter}
+          onPointerMove={onPointerMove}
+          onPointerLeave={onPointerLeave}
+          onClick={track ? toggle : undefined}
+          onKeyDown={track ? onKeyDown : undefined}
+          role={track ? 'button' : undefined}
+          tabIndex={track ? 0 : undefined}
+          aria-pressed={track ? playing : undefined}
+          aria-label={track ? `${alt}. ${playing ? 'Pause' : 'Play'} the song` : undefined}
+        >
+          <motion.img
+            src={src}
+            alt={track ? '' : alt}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            style={{ x: imgX, y: imgY, scale: vertical ? 1.2 : 1.08 }}
+          />
+          <motion.span className="wk-dim" aria-hidden="true" style={{ opacity: dim }} />
+          {EFFECTS.photoGrain && <span className="film-grain" aria-hidden="true" />}
+          <span className="film-glare" aria-hidden="true" />
+
+          {track && !playing && !notice && (
+            <span className="wk-note" aria-hidden="true">♪</span>
+          )}
+
+          <AnimatePresence>
+            {(playing || notice || showHint) && (
+              <motion.div
+                key={playing ? 'playing' : notice ? 'notice' : 'hint'}
+                className={`wk-now${playing && !expanded ? ' is-compact' : ''}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                aria-live="polite"
+              >
+                {playing ? (
+                  <>
+                    <span className="wk-eq" aria-hidden="true">
+                      <i /><i /><i /><i />
+                    </span>
+                    {expanded && (
+                      <motion.span
+                        className="wk-now-text"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        {label}
+                      </motion.span>
+                    )}
+                  </>
+                ) : notice ? (
+                  <span className="wk-now-text">{notice}</span>
+                ) : (
+                  <>
+                    <span className="wk-music-dot" aria-hidden="true" />
+                    <span className="wk-now-text">{hint}</span>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <figcaption>{String(index + 1).padStart(2, '0')}</figcaption>
+        </figure>
+      </motion.div>
+    </div>
   )
 }

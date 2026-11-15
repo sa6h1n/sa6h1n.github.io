@@ -5,7 +5,7 @@ import {
   AnimatePresence,
   useScroll,
   useTransform,
-   useInView,
+  useInView,
   useReducedMotion,
   type MotionValue,
 } from 'framer-motion'
@@ -22,10 +22,13 @@ import {
 
 import { getWorkDoc } from '../data/workDocs'
 
-import { startAudioReactive } from '../audio/reactive'
+import { FADE_AWAY_MS, getPreviewId, stopPreview, usePreviewId } from '../audio/preview'
+import { coverage } from '../audio/ambientLevel'
+import { useInputMode } from '../audio/inputMode'
 import QuoteReel from './QuoteReel'
 import { useQuoteReveal } from './useQuoteReel'
-import PhotoFigure from './PhotoFigure'
+import PhotoFigure, { type ReadyTrack } from './PhotoFigure'
+import { useDepth } from './useDepth'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -65,19 +68,148 @@ function WorkLine({
   )
 }
 
+// True while the viewport matches the query (used to switch the gallery to its phone layout).
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const update = () => setMatches(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [query])
+
+  return matches
+}
+
+// Which of a section's songs actually exist in public/hobbies/music/ (so photos without a file stay plain).
+function useReadyTracks(section: WorkSection): (ReadyTrack | null)[] {
+  const [ready, setReady] = useState<(ReadyTrack | null)[]>([])
+
+  useEffect(() => {
+    const tracks = section.tracks
+    if (!tracks || tracks.length === 0) return
+
+    let dead = false
+
+    Promise.all(
+      tracks.map(async (track, index): Promise<ReadyTrack | null> => {
+        if (!track) return null
+
+        const src = `${import.meta.env.BASE_URL}hobbies/music/${track.file}`
+
+        // a dev server answers missing files with the index page, so check the type too
+        const exists = await fetch(src, { method: 'HEAD' })
+          .then((res) => res.ok && !(res.headers.get('content-type') || '').includes('text/html'))
+          .catch(() => false)
+
+        // In production a photo without a song file stays a plain photo.
+        // While developing we still show the music UI so you can see it.
+        if (!exists && !import.meta.env.DEV) return null
+
+        return {
+          id: `${section.id}-${index}`,
+          src,
+          file: track.file,
+          missing: !exists,
+          title: track.title,
+          artist: track.artist,
+          start: track.start,
+        }
+      }),
+    ).then((list) => {
+      if (!dead) setReady(list)
+    })
+
+    return () => {
+      dead = true
+    }
+  }, [section])
+
+  return ready
+}
+
 // A full-height gallery section card.
 function SectionCard({
   section,
   data,
   onOpen,
+  trackX,
+  vertical,
 }: {
   section: WorkSection
   data: WorksLang
   onOpen: (item: WorkListItem) => void
+  trackX: MotionValue<number>
+  vertical: boolean
 }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const reduce = useReducedMotion()
+
+  const tracks = useReadyTracks(section)
+  const hasMusic = tracks.some(Boolean)
+
+  // The title lags a little behind the photos, which adds a layer of depth.
+  const depth = useDepth(cardRef, trackX, vertical, Boolean(reduce))
+  const headX = useTransform(depth, (v) => (vertical ? 0 : v * -70))
+
+  // A short message the first time the music section is on screen.
+  const seen = useInView(cardRef, { amount: vertical ? 0.3 : 0.55, once: true })
+  const previewId = usePreviewId()
+  const [hint, setHint] = useState(false)
+
+  useEffect(() => {
+    if (!hasMusic || !seen) return
+
+    setHint(true)
+    const t = window.setTimeout(() => setHint(false), 5200)
+
+    return () => window.clearTimeout(t)
+  }, [hasMusic, seen])
+
+  // Scrolling away from the music page: a song that is still playing fades away (the visitor did not
+  // pause it) and the background music comes back. While the page is on screen it keeps playing.
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !hasMusic) return
+
+    let raf = 0
+    const check = () => {
+      raf = 0
+      const id = getPreviewId()
+      if (!id || !id.startsWith(`${section.id}-`)) return
+      if (coverage(el.getBoundingClientRect(), window.innerWidth, window.innerHeight) < 0.12) {
+        stopPreview(id, FADE_AWAY_MS)
+      }
+    }
+    const onMove = () => {
+      if (!raf) raf = requestAnimationFrame(check)
+    }
+
+    window.addEventListener('scroll', onMove, { passive: true })
+    window.addEventListener('resize', onMove)
+    return () => {
+      window.removeEventListener('scroll', onMove)
+      window.removeEventListener('resize', onMove)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [hasMusic, section.id])
+
+  // Laptop (mouse): hover plays a song. Phone (finger): tap plays it. Updates live.
+  const inputMode = useInputMode()
+
+  // the message sits over the first cover that has a song
+  const hintIndex = tracks.findIndex(Boolean)
+  const hintText = hint && previewId === null
+    ? inputMode === 'mouse' ? 'Hover to play' : 'Tap to play'
+    : null
+
   return (
-    <div className="wk-card">
-      <div className="wk-card-head">
+    <div className="wk-card" ref={cardRef} data-music={hasMusic ? 'true' : undefined}>
+      <motion.div className="wk-card-head" style={{ x: headX }}>
         <span className="wk-card-no">{section.no}</span>
 
         <h3 className="wk-card-title">{section.title}</h3>
@@ -85,12 +217,17 @@ function SectionCard({
         <span className="wk-card-tagline">
           {section.tagline}
         </span>
-      </div>
+      </motion.div>
 
       <SectionWorks
         section={section}
         data={data}
         onOpen={onOpen}
+        trackX={trackX}
+        vertical={vertical}
+        tracks={tracks}
+        hintIndex={hintIndex}
+        hintText={hintText}
       />
     </div>
   )
@@ -101,21 +238,35 @@ function SectionWorks({
   section,
   data,
   onOpen,
+  trackX,
+  vertical,
+  tracks,
+  hintIndex,
+  hintText,
 }: {
   section: WorkSection
   data: WorksLang
   onOpen: (item: WorkListItem) => void
+  trackX: MotionValue<number>
+  vertical: boolean
+  tracks: (ReadyTrack | null)[]
+  hintIndex: number
+  hintText: string | null
 }) {
   return (
-    <div className="wk-card-body">
+    <div className={`wk-card-body${section.galleryImages ? ' is-photos' : ''}`}>
       {section.galleryImages ? (
         <div className="wk-photo-grid">
           {section.galleryImages.map((src, index) => (
             <PhotoFigure
-              key={src}
+              key={`${src}-${vertical ? 'v' : 'h'}`}
               src={src}
               alt={`${section.title} — ${section.tagline.toLowerCase()}, photo ${index + 1} of ${section.galleryImages!.length}`}
               index={index}
+              trackX={trackX}
+              vertical={vertical}
+              track={tracks[index] ?? null}
+              hint={index === hintIndex ? hintText : null}
             />
           ))}
         </div>
@@ -562,334 +713,12 @@ export default function Works({
   const count = sections.length
 
   const [active, setActive] = useState<WorkListItem | null>(null)
-  const [musicNeedsGesture, setMusicNeedsGesture] = useState(false)
+  const vertical = useMediaQuery('(max-width: 640px)')
 
   const galleryRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
-  const unlockMusicRef = useRef<(() => void) | null>(null)
 
-// =========================================================
-// GALLERY BACKGROUND MUSIC — TAB SWITCH + FADE
-// =========================================================
-useEffect(() => {
-  const gallery = galleryRef.current
-  if (!gallery) return
-
-  const audio = new Audio(
-    `${import.meta.env.BASE_URL}hobbies/music/gallery-track.mp3`,
-  )
-
-  audio.loop = true
-  audio.preload = 'none'
-  audio.volume = 0
-
-  let destroyed = false
-  let galleryVisible = false
-  let autoplayAttempted = false
-  let manuallyPaused = false
-  let resumeAfterTabSwitch = false
-
-  let fadeFrame = 0
-  let fadeStartedAt = 0
-  let fadeStartVolume = 0
-  let fadeTargetVolume = 0
-  let lastVolumeTarget = -1
-
-  const TARGET_VOLUME = 0.095
-  const FADE_DURATION = 800
-
-  // Make the 3D scene pulse with the music (reads audio.currentTime only).
-  const stopReactive = startAudioReactive(
-    audio,
-    audio.src,
-    () => audio.volume / TARGET_VOLUME,
-  )
-
-  const cancelFade = () => {
-    if (fadeFrame) {
-      cancelAnimationFrame(fadeFrame)
-      fadeFrame = 0
-    }
-  }
-
-  // Calculate the desired volume from gallery visibility.
-  const getDesiredVolume = () => {
-    const rect = gallery.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-
-    if (rect.top >= viewportHeight || rect.bottom <= 0) {
-      return 0
-    }
-
-    const fadeDistance = Math.max(240, viewportHeight * 0.6)
-
-    const entering = Math.max(
-      0,
-      Math.min(1, (viewportHeight - rect.top) / fadeDistance),
-    )
-
-    const leaving = Math.max(
-      0,
-      Math.min(1, rect.bottom / fadeDistance),
-    )
-
-    return Math.min(entering, leaving) * TARGET_VOLUME
-  }
-
-  const fadeTo = (target: number) => {
-    if (destroyed) return
-
-    target = Math.max(0, Math.min(TARGET_VOLUME, target))
-
-    if (
-      Math.abs(target - lastVolumeTarget) < 0.004 &&
-      (fadeFrame !== 0 || Math.abs(audio.volume - target) < 0.004)
-    ) {
-      return
-    }
-
-    lastVolumeTarget = target
-    cancelFade()
-
-    fadeStartVolume = audio.volume
-    fadeTargetVolume = target
-    fadeStartedAt = performance.now()
-
-    const animate = (now: number) => {
-      if (destroyed) return
-
-      const progress = Math.min(
-        1,
-        (now - fadeStartedAt) / FADE_DURATION,
-      )
-
-      const eased = progress * progress * (3 - 2 * progress)
-
-      audio.volume =
-        fadeStartVolume +
-        (fadeTargetVolume - fadeStartVolume) * eased
-
-      if (progress < 1) {
-        fadeFrame = requestAnimationFrame(animate)
-      } else {
-        audio.volume = fadeTargetVolume
-        fadeFrame = 0
-
-        if (fadeTargetVolume === 0 && !galleryVisible) {
-          audio.pause()
-        }
-      }
-    }
-
-    fadeFrame = requestAnimationFrame(animate)
-  }
-
-  const updateGalleryVisibility = () => {
-    if (destroyed) return
-
-    const rect = gallery.getBoundingClientRect()
-
-    galleryVisible =
-      rect.top < window.innerHeight && rect.bottom > 0
-
-    if (!galleryVisible) {
-      setMusicNeedsGesture(false)
-      autoplayAttempted = false
-      fadeTo(0)
-      return
-    }
-
-    // Never restart music after a manual pause.
-    if (manuallyPaused) {
-      setMusicNeedsGesture(false)
-      return
-    }
-
-    // Do not start playback while this browser tab is hidden.
-    if (document.hidden) return
-
-    if (audio.paused) {
-      setMusicNeedsGesture(true)
-
-      if (!autoplayAttempted) {
-        autoplayAttempted = true
-
-        void audio.play()
-          .then(() => {
-            if (destroyed || document.hidden || manuallyPaused) {
-              audio.pause()
-              return
-            }
-
-            setMusicNeedsGesture(false)
-            fadeTo(getDesiredVolume())
-          })
-          .catch((error: unknown) => {
-            if (destroyed) return
-
-            console.info('Gallery autoplay was blocked:', error)
-            setMusicNeedsGesture(true)
-          })
-      }
-
-      return
-    }
-
-    setMusicNeedsGesture(false)
-    fadeTo(getDesiredVolume())
-  }
-
-  // Explicit user action to enable or resume music.
-  const unlockMusic = () => {
-    if (destroyed || document.hidden) return
-
-    const rect = gallery.getBoundingClientRect()
-
-    galleryVisible =
-      rect.top < window.innerHeight && rect.bottom > 0
-
-    if (!galleryVisible) return
-
-    manuallyPaused = false
-    autoplayAttempted = true
-
-    cancelFade()
-    audio.volume = 0
-    lastVolumeTarget = -1
-
-    void audio.play()
-      .then(() => {
-        if (destroyed || document.hidden || manuallyPaused) {
-          audio.pause()
-          return
-        }
-
-        setMusicNeedsGesture(false)
-        fadeTo(getDesiredVolume())
-      })
-      .catch((error: unknown) => {
-        if (destroyed) return
-
-        console.info('Manual gallery playback failed:', error)
-        setMusicNeedsGesture(true)
-      })
-  }
-
-  // Retry blocked autoplay after genuine user interaction.
-  const onUserInteraction = () => {
-    if (
-      destroyed ||
-      document.hidden ||
-      !galleryVisible ||
-      !audio.paused ||
-      manuallyPaused
-    ) {
-      return
-    }
-
-    autoplayAttempted = true
-
-    void audio.play()
-      .then(() => {
-        if (destroyed || document.hidden || manuallyPaused) {
-          audio.pause()
-          return
-        }
-
-        setMusicNeedsGesture(false)
-        fadeTo(getDesiredVolume())
-      })
-      .catch(() => {
-        if (!destroyed && galleryVisible && !manuallyPaused) {
-          setMusicNeedsGesture(true)
-        }
-      })
-  }
-
-  // Pause when leaving the tab, resume only if it was playing.
-  const handleVisibilityChange = () => {
-    if (document.hidden) {
-      resumeAfterTabSwitch = !audio.paused && !manuallyPaused
-
-      cancelFade()
-      audio.pause()
-      return
-    }
-
-    if (resumeAfterTabSwitch && galleryVisible && !manuallyPaused) {
-      resumeAfterTabSwitch = false
-
-      void audio.play()
-        .then(() => {
-          if (destroyed || document.hidden || manuallyPaused) {
-            audio.pause()
-            return
-          }
-
-          fadeTo(getDesiredVolume())
-        })
-        .catch((error: unknown) => {
-          if (!destroyed && galleryVisible && !manuallyPaused) {
-            console.info('Could not resume gallery music:', error)
-            setMusicNeedsGesture(true)
-          }
-        })
-    }
-  }
-
-  const observer = new IntersectionObserver(
-    updateGalleryVisibility,
-    { threshold: 0 },
-  )
-
-  window.addEventListener('scroll', updateGalleryVisibility, {
-    passive: true,
-  })
-
-  window.addEventListener('resize', updateGalleryVisibility)
-
-  document.addEventListener('pointerdown', onUserInteraction, {
-    passive: true,
-  })
-
-  document.addEventListener('keydown', onUserInteraction)
-
-  document.addEventListener(
-    'visibilitychange',
-    handleVisibilityChange,
-  )
-
-  observer.observe(gallery)
-
-  unlockMusicRef.current = unlockMusic
-
-  updateGalleryVisibility()
-
-  return () => {
-    destroyed = true
-    unlockMusicRef.current = null
-    stopReactive()
-
-    observer.disconnect()
-
-    window.removeEventListener('scroll', updateGalleryVisibility)
-    window.removeEventListener('resize', updateGalleryVisibility)
-
-    document.removeEventListener('pointerdown', onUserInteraction)
-    document.removeEventListener('keydown', onUserInteraction)
-
-    document.removeEventListener(
-      'visibilitychange',
-      handleVisibilityChange,
-    )
-
-    cancelFade()
-
-    audio.pause()
-    audio.removeAttribute('src')
-    audio.load()
-  }
-}, [])
+  // (The background music now lives in src/audio/ambient.ts and is started from App.tsx.)
 
   // =========================================================
   // HORIZONTAL GALLERY SCROLL
@@ -1010,6 +839,8 @@ useEffect(() => {
                 section={section}
                 data={data}
                 onOpen={setActive}
+                trackX={x}
+                vertical={vertical}
               />
             ))}
 
@@ -1039,65 +870,6 @@ useEffect(() => {
           </motion.span>
         </div>
       </div>
-
-      {/* Music button */}
-      {musicNeedsGesture && (
-        <button
-          type="button"
-          onClick={() => {
-            unlockMusicRef.current?.()
-          }}
-          aria-label="Enable gallery background music"
-          style={{
-            position: 'fixed',
-            left: '24px',
-            bottom: '28px',
-            zIndex: 99999,
-
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-
-            padding: '12px 18px',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '4px',
-
-            background: 'rgba(255, 255, 255, 0.06)',
-            color: 'rgba(255, 255, 255, 0.9)',
-
-            fontFamily: 'inherit',
-            fontSize: '11px',
-            fontWeight: 500,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-
-            cursor: 'pointer',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-
-            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.05)',
-            transition:
-              'background 0.25s ease, border-color 0.25s ease',
-          }}
-          onMouseEnter={(event) => {
-            event.currentTarget.style.background =
-              'rgba(255, 255, 255, 0.12)'
-
-            event.currentTarget.style.borderColor =
-              'rgba(255, 255, 255, 0.55)'
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.background =
-              'rgba(255, 255, 255, 0.06)'
-
-            event.currentTarget.style.borderColor =
-              'rgba(255, 255, 255, 0.3)'
-          }}
-        >
-          <span aria-hidden="true">♫</span>
-          <span>Enable Music</span>
-        </button>
-      )}
 
       {/* Work details modal */}
       <AnimatePresence>

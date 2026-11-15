@@ -14,6 +14,8 @@ import NoiseOverlay from './ui/NoiseOverlay'
 import Resume from './ui/Resume'
 import Works from './ui/Works'
 import LoadingScreen from './ui/LoadingScreen'
+import SoundToggle from './ui/SoundToggle'
+import { startAmbientMusic } from './audio/ambient'
 import { useStore } from './store'
 
 function Backdrop() {
@@ -145,6 +147,9 @@ function Hero({
 export default function App() {
   const lang: Lang = 'en'
   const [views, setViews] = useState<string | null>(null)
+
+  // Background music: silent in the hero, starts at "A Little About Me", follows the scroll.
+  useEffect(() => startAmbientMusic(), [])
 
   // Load the site-wide visitor count.
   useEffect(() => {
@@ -337,6 +342,9 @@ export default function App() {
 
       {/* Film grain overlay */}
       <NoiseOverlay />
+
+      {/* "Tap for sound" chip / mute button */}
+      <SoundToggle />
 
       {/* Scrollable page content */}
       <main className="content">
