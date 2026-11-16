@@ -6,9 +6,9 @@ import { DoubleSide, Vector2 } from 'three'
 // frameloop="demand" 节流到 ~0.8fps，几乎不占性能。
 const CONFIG = { zIndex: 100, opacity: 0.5, alpha: 1 }
 const SHADER_VERSION = 'noise-v1'
-// Phones/tablets: the grain showed up as dirty dots over the photos on Android, so it stays off there.
-// Set to true to show it on touch devices too.
-const SHOW_ON_TOUCH_DEVICES = false
+// Phones/tablets: the film grain is shown there too, so mobile looks like the laptop.
+// (Set to false to switch it off on touch devices.)
+const SHOW_ON_TOUCH_DEVICES = true
 const num = (v: number) => v.toFixed(3)
 
 const vertexShader = /* glsl */ `

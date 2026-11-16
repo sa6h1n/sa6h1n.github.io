@@ -3,7 +3,7 @@
 // then a blue wave and the page itself open up inside it like the record's label. Closing plays it
 // backwards: the page shrinks away, then the record spins back down into the same point.
 // Used inside the site (MusicOverlay) and by the stand-alone music page (StandaloneMusic).
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import './stage.css'
 
@@ -33,6 +33,13 @@ export default function MusicStage({
   children: ReactNode
 }) {
   const reduce = useReducedMotion()
+  // Phones / touch screens: animating a clip-path over the whole live page is too heavy for them (it
+  // re-paints every frame and made the disc stutter), so there the record spins up and the page just
+  // fades in once the record covers the screen. Only transforms and opacity move, which the GPU handles.
+  const lite = useMemo(
+    () => window.matchMedia?.('(pointer: coarse), (max-width: 640px)').matches === true,
+    [],
+  )
   const layerRef = useRef<HTMLDivElement>(null)
   const r = coverRadius(origin)
   const closed = circle(0, origin)
@@ -64,6 +71,40 @@ export default function MusicStage({
           <div className="mp-glow" aria-hidden="true" />
           {children}
         </div>
+      </motion.div>
+    )
+  }
+
+  if (lite) {
+    return (
+      <motion.div
+        ref={layerRef}
+        className="mx-layer mx-lite"
+        role="dialog"
+        aria-modal="true"
+        aria-label="My Music"
+      >
+        <motion.div
+          className="mx-vinyl"
+          aria-hidden="true"
+          style={{ left: origin.x - r, top: origin.y - r, width: r * 2, height: r * 2 }}
+          initial={{ scale: 0, rotate: 0 }}
+          animate={{ scale: 1, rotate: 360, transition: { duration: 0.9, ease: EASE } }}
+          exit={{ scale: 0, rotate: 0, transition: { duration: 0.75, ease: EASE, delay: 0.2 } }}
+          onAnimationComplete={(def) => {
+            // the record now hides the site, so the 3D scene behind it can pause
+            if (typeof def === 'object' && 'scale' in def && def.scale === 1) onCovered?.()
+          }}
+        />
+        <motion.div
+          className="mx-page mx-page-lite"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: 0.35, delay: 0.7 } }}
+          exit={{ opacity: 0, transition: { duration: 0.2 } }}
+        >
+          <div className="mp-glow" aria-hidden="true" />
+          {children}
+        </motion.div>
       </motion.div>
     )
   }
