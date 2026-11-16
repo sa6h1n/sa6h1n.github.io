@@ -127,7 +127,7 @@ export default function MusicPage({ onBack }: Props) {
       <div className="mp-scroll" tabIndex={-1}>
         <main className="mp">
           <header className="mp-hero">
-            <p className="mp-eyebrow">Soundtrack to my life</p>
+            <p className="mp-eyebrow">Soundtracks I listen Everyday</p>
             <h1 className="mp-title">My Music</h1>
             <p className="mp-lead">Tap any tile to open it in Apple Music.</p>
           </header>
@@ -142,7 +142,7 @@ export default function MusicPage({ onBack }: Props) {
           </section>
 
           <section aria-labelledby="mp-albums">
-            <h2 className="mp-h2" id="mp-albums">Albums on repeat</h2>
+            <h2 className="mp-h2" id="mp-albums">Albums</h2>
             <div className="mp-grid is-four">
               {ALBUMS.map((l, i) => (
                 <Tile key={l.id} link={l} index={i + PLAYLISTS.length} group="albums" />
