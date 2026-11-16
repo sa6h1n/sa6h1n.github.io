@@ -41,7 +41,6 @@ interface Props {
 
 const MAX_TILT = 9 // degrees, hover tilt toward the cursor
 const HOVER_DWELL_MS = 220 // pointer must rest on a cover this long before music starts
-const CAPTION_MS = 4200 // the "now playing" message stays this long, then shrinks to the bars
 const BLOCKED_MS = 3200
 
 // every photo sits at a slightly different "depth", so they drift at different speeds
@@ -156,7 +155,6 @@ export default function PhotoFigure({ src, alt, index, trackX, vertical, track, 
   // ───────── music ─────────
   const previewId = usePreviewId()
   const playing = Boolean(track) && previewId === track?.id
-  const [expanded, setExpanded] = useState(false) // full "now playing" message visible
   const [notice, setNotice] = useState<string | null>(null) // short message: "Click / Tap to play", or a dev hint
   const dwell = useRef<number | undefined>(undefined)
   const blockedTimer = useRef<number | undefined>(undefined)
@@ -224,17 +222,6 @@ export default function PhotoFigure({ src, alt, index, trackX, vertical, track, 
     }
   }
 
-  // the message opens for a few seconds, then shrinks to the little bars
-  useEffect(() => {
-    if (!playing) {
-      setExpanded(false)
-      return
-    }
-    setExpanded(true)
-    const t = window.setTimeout(() => setExpanded(false), CAPTION_MS)
-    return () => window.clearTimeout(t)
-  }, [playing])
-
   // Unmounting stops this photo's song. (Scrolling away from the whole music page is handled
   // in Works.tsx — the song keeps playing while you look at the other covers.)
   useEffect(() => {
@@ -248,10 +235,6 @@ export default function PhotoFigure({ src, alt, index, trackX, vertical, track, 
   }, [track])
 
   const showHint = Boolean(hint) && !playing && !notice
-
-  const label = track?.title
-    ? `${track.title}${track.artist ? ` — ${track.artist}` : ''}`
-    : 'Now playing'
 
   return (
     <div ref={cellRef} className="wk-cell" style={{ ['--i' as string]: index }}>
@@ -300,7 +283,7 @@ export default function PhotoFigure({ src, alt, index, trackX, vertical, track, 
             {(playing || notice || showHint) && (
               <motion.div
                 key={playing ? 'playing' : notice ? 'notice' : 'hint'}
-                className={`wk-now${playing && !expanded ? ' is-compact' : ''}`}
+                className={`wk-now${playing ? ' is-song' : ''}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 6 }}
@@ -312,16 +295,12 @@ export default function PhotoFigure({ src, alt, index, trackX, vertical, track, 
                     <span className="wk-eq" aria-hidden="true">
                       <i /><i /><i /><i />
                     </span>
-                    {expanded && (
-                      <motion.span
-                        className="wk-now-text"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                      >
-                        {label}
-                      </motion.span>
-                    )}
+                    {/* shown the whole time the song plays, and only then */}
+                    <span className="wk-now-copy">
+                      <span className="wk-now-eyebrow">Now playing</span>
+                      {track?.title && <span className="wk-now-title">{track.title}</span>}
+                      {track?.artist && <span className="wk-now-artist">{track.artist}</span>}
+                    </span>
                   </>
                 ) : notice ? (
                   <span className="wk-now-text">{notice}</span>

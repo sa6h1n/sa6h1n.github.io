@@ -87,12 +87,12 @@ const sections: WorkSection[] = [
     // (seconds into the song). Example:
     //   { file: '01.mp3', title: 'Street Spirit', artist: 'Radiohead', start: 20 }
     tracks: [
-      { file: '01.mp3' },
-      { file: '02.mp3' },
-      { file: '03.mp3' },
-      { file: '04.mp3' },
-      { file: '05.mp3' },
-      { file: '06.mp3' },
+      { file: '01.mp3', title: 'Fake Plastic Trees', artist: 'Radiohead' },
+      { file: '02.mp3', title: 'Is This Really Love', artist: 'd4vd' },
+      { file: '03.mp3', title: 'Lovers Rock', artist: 'TV Girl' },
+      { file: '04.mp3', title: 'Eyes Without a Face', artist: 'Billy Idol' },
+      { file: '05.mp3', title: 'No Other Heart', artist: 'Mac DeMarco' },
+      { file: '06.mp3', title: 'Sienna', artist: 'The Submarines' },
     ],
   },
   {

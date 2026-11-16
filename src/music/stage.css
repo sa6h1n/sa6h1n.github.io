@@ -1,0 +1,25 @@
+/* The curtain around the music page (loaded with the site, because it must exist before the page does) */
+.mx-layer {
+  --tile-delay: 640ms; /* the tiles rise in once the circle has opened a little */
+  position: fixed;
+  inset: 0;
+  z-index: 10000; /* above the loading screen and the sound button (both 9999) */
+  overflow: hidden;
+}
+.mx-wave,
+.mx-page {
+  position: absolute;
+  inset: 0;
+  will-change: clip-path;
+}
+.mx-wave-warm { background: #ffd9b3; }
+.mx-wave-blue { background: linear-gradient(135deg, #6486c8, #4a6aa8 60%, #3b5890); }
+.mx-page {
+  background: #0a0e16;
+  color: #f4f1ea;
+  font-family: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.mx-layer *,
+.mx-layer *::before,
+.mx-layer *::after { box-sizing: border-box; }

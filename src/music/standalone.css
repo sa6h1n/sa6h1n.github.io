@@ -1,0 +1,7 @@
+/* Only for the music page opened on its own (a direct visit to /?page=music): no site styles are loaded here. */
+html,
+body {
+  margin: 0;
+  background: #0a0e16;
+  color: #f4f1ea;
+}

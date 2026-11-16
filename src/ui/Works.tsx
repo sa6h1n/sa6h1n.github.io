@@ -28,8 +28,9 @@ import { useInputMode } from '../audio/inputMode'
 import QuoteReel from './QuoteReel'
 import { useQuoteReveal } from './useQuoteReel'
 import PhotoFigure, { type ReadyTrack } from './PhotoFigure'
-import { AppleMusicIcon, InstagramIcon } from './SocialIcons'
-import { APPLE_MUSIC_URL, INSTAGRAM_URL } from '../data/socials'
+import { INSTAGRAM_URL } from '../data/socials'
+import { openMusicPage } from '../music/nav'
+import { preloadMusic } from '../music/lazy'
 import { useDepth } from './useDepth'
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -622,32 +623,40 @@ function QuoteCard() {
       ref={quoteRef}
       className="wk-card wk-quote-card"
     >
-      {/* top left: Instagram · top right: Apple Music playlist (same size as the sound button) */}
+      {/* Top corners, in the same style as the first page's corner text: two plain links */}
       <motion.a
-        className="corner-btn corner-left"
+        className="corner-link corner-left"
         href={INSTAGRAM_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Sachin on Instagram"
-        title="Instagram"
+        aria-label="Instagram (opens in a new tab)"
         initial={{ opacity: 0 }}
         animate={{ opacity: isInView ? 1 : 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
       >
-        <InstagramIcon aria-hidden="true" />
+        Instagram <span className="corner-arrow" aria-hidden="true">↗</span>
       </motion.a>
+      {/* top right: opens the "My Music" page (all my playlists and albums) in this tab, with a circle
+          that grows out of this link. The href is still a real link, so ctrl/cmd-click, middle-click and
+          "copy link" keep working (they open the page on its own). */}
       <motion.a
-        className="corner-btn corner-right"
-        href={APPLE_MUSIC_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Open my playlist on Apple Music"
-        title="My playlist on Apple Music"
+        className="corner-link corner-right"
+        href={`${import.meta.env.BASE_URL}?page=music`}
+        aria-label="My Music — playlists and albums"
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+          e.preventDefault()
+          const r = e.currentTarget.getBoundingClientRect()
+          openMusicPage({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+        }}
+        onPointerEnter={preloadMusic}
+        onFocus={preloadMusic}
+        onTouchStart={preloadMusic}
         initial={{ opacity: 0 }}
         animate={{ opacity: isInView ? 1 : 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
       >
-        <AppleMusicIcon aria-hidden="true" />
+        My Music <span className="corner-arrow" aria-hidden="true">↗</span>
       </motion.a>
 
       <div className="wk-quote-content">

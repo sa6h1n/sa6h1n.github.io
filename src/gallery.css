@@ -8,16 +8,11 @@
 
 /* the layer that scroll depth moves (translate only, so photos stay sharp) */
 .wk-depth { width: 100%; }
-/* first time it appears: it comes out of the dark and out of focus (one cheap transition) */
-.wk-depth.reveal { opacity: 0; filter: blur(8px); }
+/* first time it appears: it fades in (opacity only — a blur on all 24 photos at once was costly) */
+.wk-depth.reveal { opacity: 0; }
 .wk-depth.reveal.is-in {
   opacity: 1;
-  filter: none;
-  transition: opacity 0.9s ease calc(var(--i, 0) * 70ms), filter 0.9s ease calc(var(--i, 0) * 70ms);
-}
-/* desktop: the layer that flies in from depth */
-@media (min-width: 641px) {
-  .wk-depth { will-change: transform; backface-visibility: hidden; }
+  transition: opacity 0.9s ease calc(var(--i, 0) * 70ms);
 }
 
 .wk-photo {
@@ -104,7 +99,19 @@
   color: #f4f1ea;
   pointer-events: none;
 }
-.wk-now.is-compact { padding: 8px 10px; }
+/* while a song plays: a small card — "NOW PLAYING", the song, the artist */
+.wk-now.is-song { gap: 11px; padding: 10px 14px 10px 12px; border-radius: 14px; }
+.wk-now.is-song .wk-eq { height: 18px; }
+.wk-now-copy { display: grid; gap: 2px; min-width: 0; }
+.wk-now-copy > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-now-eyebrow {
+  font: 500 9px/1.2 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ffd9b3;
+}
+.wk-now-title { font: 500 13px/1.25 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.01em; color: #f4f1ea; }
+.wk-now-artist { font: 400 11px/1.25 'Space Grotesk', system-ui, sans-serif; letter-spacing: 0.04em; color: rgba(244, 241, 234, 0.72); }
 .wk-now-text {
   font: 500 11px/1.25 'Space Grotesk', system-ui, sans-serif;
   letter-spacing: 0.06em;
@@ -156,7 +163,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wk-depth.reveal { opacity: 1; filter: none; }
+  .wk-depth.reveal { opacity: 1; }
   .wk-note, .wk-eq i, .wk-music-dot::after { animation: none; }
   .wk-eq i { transform: scaleY(0.7); }
 }

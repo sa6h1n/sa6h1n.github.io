@@ -17,6 +17,7 @@ import LoadingScreen from './ui/LoadingScreen'
 import SoundToggle from './ui/SoundToggle'
 import { startAmbientMusic } from './audio/ambient'
 import { useStore } from './store'
+import MusicOverlay from './music/MusicOverlay'
 
 function Backdrop() {
   const setActive = useStore((s) => s.setActive)
@@ -147,6 +148,8 @@ function Hero({
 export default function App() {
   const lang: Lang = 'en'
   const [views, setViews] = useState<string | null>(null)
+  // The music page hides the whole site when it is open, so the 3D scene stops drawing (saves battery)
+  const musicCovered = useStore((s) => s.musicCovered)
 
   // Background music: silent in the hero, starts at "A Little About Me", follows the scroll.
   useEffect(() => startAmbientMusic(), [])
@@ -255,6 +258,7 @@ export default function App() {
       {/* Fixed 3D background */}
       <div className="scene-bg">
         <Canvas
+          frameloop={musicCovered ? 'never' : 'always'}
           shadows={{ type: THREE.PCFShadowMap }}
           dpr={[1, 1.5]}
           camera={{
@@ -361,6 +365,9 @@ export default function App() {
         />
 
       </main>
+
+      {/* "My Music" page: opens over the site with a circle animation */}
+      <MusicOverlay />
     </MotionConfig>
   )
 }

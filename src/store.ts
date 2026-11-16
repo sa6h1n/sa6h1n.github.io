@@ -8,6 +8,13 @@ interface StoreState {
   setActive: (id: string | null) => void
   setHovered: (id: string | null) => void
   enter: () => void
+  // "My Music" page: opens over the site (no page reload) with a circle that grows from the link
+  musicOpen: boolean
+  musicOrigin: { x: number; y: number } // where the circle grows from / shrinks back to
+  musicCovered: boolean // the music page fully hides the site (so the 3D scene can pause)
+  openMusic: (origin: { x: number; y: number }) => void
+  closeMusic: () => void
+  setMusicCovered: (v: boolean) => void
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -17,6 +24,12 @@ export const useStore = create<StoreState>((set) => ({
   setActive: (id) => set({ active: id }),
   setHovered: (id) => set({ hovered: id }),
   enter: () => set({ entered: true }),
+  musicOpen: false,
+  musicOrigin: { x: 0, y: 0 },
+  musicCovered: false,
+  openMusic: (origin) => set({ musicOpen: true, musicOrigin: origin, musicCovered: false }),
+  closeMusic: () => set({ musicOpen: false, musicCovered: false }),
+  setMusicCovered: (v) => set({ musicCovered: v }),
 }))
 
 // 开发期调试钩子：可在 console 用 __store.getState().setActive('ads')
