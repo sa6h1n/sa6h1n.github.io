@@ -16,7 +16,6 @@ import {
 import * as THREE from 'three'
 
 import Env from './Env'
-import { audioLevel } from '../audio/level'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
 
 useGLTF.preload(`${import.meta.env.BASE_URL}models/me.glb`)
@@ -39,6 +38,11 @@ const IS_MOBILE =
   (window.matchMedia?.('(pointer: coarse)').matches === true ||
     window.innerWidth <= 640)
 
+// Head / eye following the cursor or finger, and the idle sway, only happen on the home screen.
+// Once the page has scrolled past it (About Me and everything after) the character holds still.
+const pastHome = () =>
+  typeof window !== 'undefined' && window.scrollY > window.innerHeight * 0.6
+
 // How long (ms) after the last mouse / trackpad movement the eyes and head
 // drift back to looking straight ahead. On touch screens this happens as soon
 // as the finger is lifted.
@@ -58,11 +62,6 @@ function GradientBackground() {
     }),
     [],
   )
-
-  // Music makes the sky glow breathe (kick = flash, bass = swell).
-  useFrame(() => {
-    uniforms.uPulse.value = audioLevel.bass * 0.55 + audioLevel.kick * 0.45
-  })
 
   uniforms.uTop.value.set(top)
   uniforms.uBottom.value.set(bottom)
@@ -130,14 +129,6 @@ function Lights() {
     fillPos: [-5, 4, -4] as [number, number, number],
   }
 
-  // Drum hits flash the cool fill light.
-  const fillRef = useRef<THREE.DirectionalLight>(null)
-  useFrame(() => {
-    if (!fillRef.current) return
-    fillRef.current.intensity =
-      c.fillIntensity + audioLevel.kick * 1.6 + audioLevel.bass * 0.6
-  })
-
   return (
     <>
       <Env
@@ -167,7 +158,6 @@ function Lights() {
       />
 
       <directionalLight
-        ref={fillRef}
         position={c.fillPos}
         intensity={c.fillIntensity}
         color={c.fillColor}
@@ -455,6 +445,14 @@ function Man2({
   const charBaseQuat = useRef(new THREE.Quaternion())
   const charLastQuat = useRef(new THREE.Quaternion(0, 0, 0, 0))
   const introStart = useRef<number | null>(null)
+  // 1 on the home screen (gentle idle sway, float and breathing), eases to 0 once scrolled past it
+  const idleWeight = useRef(1)
+
+  // Scratch objects for "face the camera" in the gallery section
+  const faceEuler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
+  const faceQuat = useRef(new THREE.Quaternion())
+  const faceCentre = useRef(new THREE.Vector3())
+  const facePos = useRef(new THREE.Vector3())
 
   // Scratch vectors for the home-screen framing
   const heroRef = useRef(new THREE.Vector3())
@@ -487,6 +485,7 @@ function Man2({
     }
 
     const onMove = (e: PointerEvent) => {
+      if (pastHome()) return release()
       updatePointer(e.clientX, e.clientY)
       hold(e.pointerType === 'touch')
     }
@@ -498,6 +497,7 @@ function Man2({
     const onTouch = (e: TouchEvent) => {
       const touch = e.touches[0]
       if (!touch) return
+      if (pastHome()) return release()
 
       updatePointer(touch.clientX, touch.clientY)
       hold(true)
@@ -511,6 +511,11 @@ function Man2({
       if (document.hidden) release()
     }
 
+    const onScrollAway = () => {
+      if (pastHome()) release()
+    }
+
+    window.addEventListener('scroll', onScrollAway, { passive: true })
     window.addEventListener('pointermove', onMove, { passive: true })
     window.addEventListener('pointerdown', onMove, { passive: true })
     window.addEventListener('pointerup', onPointerUp, { passive: true })
@@ -524,6 +529,7 @@ function Man2({
 
     return () => {
       window.clearTimeout(idleTimer)
+      window.removeEventListener('scroll', onScrollAway)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerdown', onMove)
       window.removeEventListener('pointerup', onPointerUp)
@@ -769,8 +775,12 @@ function Man2({
       )
       const introLeft = Math.pow(1 - it, 3)
 
-      // Calmer once the gallery section takes over.
-      const k = 1 - 0.6 * smoothOff
+      // Calmer once the gallery section takes over, and completely still past the home screen.
+      idleWeight.current +=
+        ((pastHome() ? 0 : 1) - idleWeight.current) * (1 - Math.exp(-5 * dt))
+      if (idleWeight.current < 0.001) idleWeight.current = 0
+      const iw = idleWeight.current
+      const k = (1 - 0.6 * smoothOff) * iw
 
       const idleYaw =
         (Math.sin(nowSec * 0.55) * 0.09 + Math.sin(nowSec * 1.35) * 0.03) * k
@@ -798,15 +808,42 @@ function Man2({
       charNode.quaternion
         .copy(headQuat.current)
         .multiply(charBaseQuat.current)
+
+      // Gallery section: the camera slides sideways past him, which made him look off to one side.
+      // Turn him (about his face, so the face stays where it is) so he keeps looking straight into
+      // the camera the whole way through. 0 on the home screen / timeline, 1 in the gallery.
+      const faceW = smoothOff
+      faceQuat.current.identity()
+      if (faceW > 0.001) {
+        const camP = get().camera.position
+        faceCentre.current.set(posX, posY, posZ).addScaledVector(eyeMid, scale)
+        const dx = camP.x - faceCentre.current.x
+        const dy = camP.y - faceCentre.current.y
+        const dz = camP.z - faceCentre.current.z
+        const yaw = Math.atan2(dx, dz)
+        const pitch = THREE.MathUtils.clamp(Math.atan2(dy, Math.hypot(dx, dz)), -0.14, 0.14)
+        faceEuler.current.set(-pitch * 0.8 * faceW, yaw * faceW, 0)
+        faceQuat.current.setFromEuler(faceEuler.current)
+        charNode.quaternion.premultiply(faceQuat.current)
+      }
       charLastQuat.current.copy(charNode.quaternion)
 
       // Gentle float + breathing (the character does not react to the music).
-      charNode.position.y =
-        charBase.pos.y +
-        Math.sin(nowSec * 1.3) * 0.012 -
+      charNode.position.copy(charBase.pos)
+      charNode.position.y +=
+        Math.sin(nowSec * 1.3) * 0.012 * iw -
         introLeft * 0.06
+      if (faceW > 0.001) {
+        // rotate the whole bust about the middle of his face
+        facePos.current
+          .copy(charNode.position)
+          .sub(eyeMid)
+          .applyQuaternion(faceQuat.current)
+          .add(eyeMid)
+        charNode.position.copy(facePos.current)
+      }
 
-      const breath = Math.sin(nowSec * 1.6) * 0.007
+      const breath = Math.sin(nowSec * 1.6) * 0.007 * iw
       charNode.scale.set(
         charBase.scale.x * (1 - breath * 0.5),
         charBase.scale.y * (1 + breath),
@@ -1167,15 +1204,6 @@ function Post2({
 
   const dofRef = useRef<any>(null)
 
-  // Bloom swells with the bass and pops on the kick.
-  const bloomRef = useRef<any>(null)
-  useFrame(() => {
-    const e = bloomRef.current
-    if (!e) return
-    e.intensity =
-      post.bloomIntensity + audioLevel.bass * 0.45 + audioLevel.kick * 0.5
-  })
-
   const isMobile = useRef(
     typeof window !== 'undefined' &&
       (
@@ -1294,7 +1322,6 @@ function Post2({
       ) as any}
 
       <Bloom
-        ref={bloomRef}
         mipmapBlur
         intensity={post.bloomIntensity}
         luminanceThreshold={post.bloomThreshold}

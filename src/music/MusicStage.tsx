@@ -1,6 +1,7 @@
 // The animated "curtain" the music page appears in.
-// Three circles grow from one point (the "My Music" link): a thin warm edge, then a blue wave, then
-// the page itself. Closing plays it backwards, shrinking into the same point.
+// A vinyl record spins up out of one point (the "My Music" link) and grows until it covers the screen,
+// then a blue wave and the page itself open up inside it like the record's label. Closing plays it
+// backwards: the page shrinks away, then the record spins back down into the same point.
 // Used inside the site (MusicOverlay) and by the stand-alone music page (StandaloneMusic).
 import { useEffect, useRef, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -75,27 +76,33 @@ export default function MusicStage({
       aria-modal="true"
       aria-label="My Music"
     >
-      {/* 1 — a thin warm edge leads the way */}
+      {/* 1 — a vinyl record leads the way: it grows from the link while it spins */}
       <motion.div
-        className="mx-wave mx-wave-warm"
+        className="mx-vinyl"
         aria-hidden="true"
-        initial={{ clipPath: closed }}
-        animate={{ clipPath: opened, transition: { duration: 0.95, ease: EASE } }}
-        exit={{ clipPath: closed, transition: { duration: 0.8, ease: EASE, delay: 0.14 } }}
+        style={{
+          left: origin.x - r,
+          top: origin.y - r,
+          width: r * 2,
+          height: r * 2,
+        }}
+        initial={{ scale: 0, rotate: 0 }}
+        animate={{ scale: 1, rotate: 540, transition: { duration: 1.1, ease: EASE } }}
+        exit={{ scale: 0, rotate: 0, transition: { duration: 0.85, ease: EASE, delay: 0.2 } }}
       />
       {/* 2 — the site's blue follows */}
       <motion.div
         className="mx-wave mx-wave-blue"
         aria-hidden="true"
         initial={{ clipPath: closed }}
-        animate={{ clipPath: opened, transition: { duration: 0.95, ease: EASE, delay: 0.07 } }}
-        exit={{ clipPath: closed, transition: { duration: 0.8, ease: EASE, delay: 0.07 } }}
+        animate={{ clipPath: opened, transition: { duration: 0.95, ease: EASE, delay: 0.24 } }}
+        exit={{ clipPath: closed, transition: { duration: 0.8, ease: EASE, delay: 0.1 } }}
       />
       {/* 3 — the music page */}
       <motion.div
         className="mx-page"
         initial={{ clipPath: closed }}
-        animate={{ clipPath: opened, transition: { duration: 0.95, ease: EASE, delay: 0.16 } }}
+        animate={{ clipPath: opened, transition: { duration: 0.95, ease: EASE, delay: 0.34 } }}
         exit={{ clipPath: closed, transition: { duration: 0.8, ease: EASE } }}
         onAnimationComplete={(def) => {
           // fires for the opening only: the closing animation passes the `exit` target instead

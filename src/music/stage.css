@@ -12,7 +12,18 @@
   inset: 0;
   will-change: clip-path;
 }
-.mx-wave-warm { background: #ffd9b3; }
+/* the vinyl record: grooves, a sheen that sweeps round as it spins, a blue label and a warm rim */
+.mx-vinyl {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+  background:
+    radial-gradient(circle closest-side, #0b0d13 0 1.2%, #6486c8 1.4% 7.5%, #ffd9b3 7.7% 8.1%, #0b0d13 8.4% 9.2%, transparent 9.4%),
+    conic-gradient(from 0deg, transparent 0 8%, rgba(255, 255, 255, 0.16) 13%, transparent 19%, transparent 50%, rgba(255, 255, 255, 0.16) 63%, transparent 69%),
+    repeating-radial-gradient(circle closest-side, rgba(0, 0, 0, 0.55) 0 1.5px, rgba(255, 255, 255, 0.06) 1.5px 3px),
+    #11141c;
+  box-shadow: 0 0 0 3px #ffd9b3, 0 0 60px rgba(255, 217, 179, 0.35);
+}
 .mx-wave-blue { background: linear-gradient(135deg, #6486c8, #4a6aa8 60%, #3b5890); }
 .mx-page {
   background: #0a0e16;

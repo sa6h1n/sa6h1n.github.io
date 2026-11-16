@@ -72,6 +72,41 @@ function WorkLine({
   )
 }
 
+// Fetch + decode every gallery photo shortly after the page is idle, so scrolling into the gallery
+// never has to wait for a download or a decode (that wait showed up as a stutter on slower laptops).
+const warmed: HTMLImageElement[] = []
+function warmGalleryImages(urls: string[]): () => void {
+  let cancelled = false
+  const timers: number[] = []
+  const start = () => {
+    urls.forEach((url, i) => {
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return
+          const img = new Image()
+          img.decoding = 'async'
+          img.src = url
+          warmed.push(img) // keep a reference so the decoded picture stays around
+          img.decode().catch(() => undefined)
+        }, i * 140),
+      )
+    })
+  }
+  const w = window as unknown as {
+    requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number
+    cancelIdleCallback?: (h: number) => void
+  }
+  const idle = w.requestIdleCallback
+    ? w.requestIdleCallback(start, { timeout: 5000 })
+    : window.setTimeout(start, 2500)
+  return () => {
+    cancelled = true
+    timers.forEach((t) => window.clearTimeout(t))
+    if (w.cancelIdleCallback) w.cancelIdleCallback(idle)
+    else window.clearTimeout(idle)
+  }
+}
+
 // True while the viewport matches the query (used to switch the gallery to its phone layout).
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
@@ -161,7 +196,8 @@ function SectionCard({
   // still off-screen and drifts right as the card passes. Pulling it to the left (as before) made the
   // title poke out of its card — the first letter showed on the previous page and the title crossed
   // the divider line.
-  const depth = useDepth(cardRef, trackX, vertical, Boolean(reduce))
+  // (on phones the title doesn't lag, so the depth tracking is switched off there)
+  const depth = useDepth(cardRef, trackX, vertical, Boolean(reduce) || vertical)
   const headX = useTransform(depth, (v) =>
     vertical ? 0 : HEAD_LAG * Math.min(1, Math.max(0, (1.4 - v) / 2.8)),
   )
@@ -233,8 +269,6 @@ function SectionCard({
         section={section}
         data={data}
         onOpen={onOpen}
-        trackX={trackX}
-        vertical={vertical}
         tracks={tracks}
         hintIndex={hintIndex}
         hintText={hintText}
@@ -248,8 +282,6 @@ function SectionWorks({
   section,
   data,
   onOpen,
-  trackX,
-  vertical,
   tracks,
   hintIndex,
   hintText,
@@ -257,8 +289,6 @@ function SectionWorks({
   section: WorkSection
   data: WorksLang
   onOpen: (item: WorkListItem) => void
-  trackX: MotionValue<number>
-  vertical: boolean
   tracks: (ReadyTrack | null)[]
   hintIndex: number
   hintText: string | null
@@ -269,12 +299,10 @@ function SectionWorks({
         <div className="wk-photo-grid">
           {section.galleryImages.map((src, index) => (
             <PhotoFigure
-              key={`${src}-${vertical ? 'v' : 'h'}`}
+              key={src}
               src={src}
               alt={`${section.title} — ${section.tagline.toLowerCase()}, photo ${index + 1} of ${section.galleryImages!.length}`}
               index={index}
-              trackX={trackX}
-              vertical={vertical}
               track={tracks[index] ?? null}
               hint={index === hintIndex ? hintText : null}
             />
@@ -494,9 +522,9 @@ function ExitLetter({ exit, i, n, children }: { exit: MotionValue<number>; i: nu
   const x = useTransform(exit, [from, to], [0, -34])
   const rotate = useTransform(exit, [from, to], [0, ((i * 53) % 29) - 14])
   const opacity = useTransform(exit, [from, to], [1, 0])
-  const filter = useTransform(exit, [from, to], ['blur(0px)', 'blur(9px)'])
+  // (no blur here: ~60 letters each re-blurring on every scroll frame was a big cost on Windows)
   return (
-    <motion.span className="wk-intro-exit" style={{ x, y, rotate, opacity, filter }}>
+    <motion.span className="wk-intro-exit" style={{ x, y, rotate, opacity }}>
       {children}
     </motion.span>
   )
@@ -533,12 +561,11 @@ function GalleryIntro({ text, x }: { text: string; x: MotionValue<number> }) {
                       <motion.span
                         className="wk-intro-char"
                         style={mark ? { animationDelay: `${1.6 + k * 0.11}s` } : undefined}
-                        initial={reduce ? false : { opacity: 0, y: 46, rotate: tilt, scale: 0.7, filter: 'blur(7px)' }}
-                        animate={seen || reduce ? { opacity: 1, y: 0, rotate: 0, scale: 1, filter: 'blur(0px)' } : undefined}
+                        initial={reduce ? false : { opacity: 0, y: 46, rotate: tilt, scale: 0.7 }}
+                        animate={seen || reduce ? { opacity: 1, y: 0, rotate: 0, scale: 1 } : undefined}
                         transition={{
                           default: { type: 'spring', stiffness: 150, damping: 12, mass: 0.7, delay },
                           opacity: { duration: 0.45, delay },
-                          filter: { duration: 0.7, delay },
                         }}
                       >
                         {ch}
@@ -760,6 +787,11 @@ export default function Works({
 
   const [active, setActive] = useState<WorkListItem | null>(null)
   const vertical = useMediaQuery('(max-width: 640px)')
+
+  useEffect(
+    () => warmGalleryImages(sections.flatMap((section) => section.galleryImages ?? [])),
+    [sections],
+  )
 
   const galleryRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)

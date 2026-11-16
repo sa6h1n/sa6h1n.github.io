@@ -115,16 +115,19 @@ export default function MusicPage({ onBack }: Props) {
 
   return (
     <>
-      {/* ← Back to the site. Stays put while the page scrolls. */}
-      <a className="mp-back" href={import.meta.env.BASE_URL} onClick={handleBack}>
-        <span className="mp-back-disc" aria-hidden="true">
-          <i className="mp-back-vinyl" />
-          <span className="mp-back-arrow">←</span>
-        </span>
-        <span className="mp-back-text">Back to portfolio</span>
-      </a>
-
       <div className="mp-scroll" tabIndex={-1}>
+        {/* Pinned header: the Back button stays on top (PC and mobile) and the tiles scroll underneath it. */}
+        <div className="mp-top">
+          <div className="mp-top-inner">
+            <a className="mp-back" href={import.meta.env.BASE_URL} onClick={handleBack}>
+              <span className="mp-back-disc" aria-hidden="true">
+                <i className="mp-back-vinyl" />
+                <span className="mp-back-arrow">←</span>
+              </span>
+              <span className="mp-back-text">Back</span>
+            </a>
+          </div>
+        </div>
         <main className="mp">
           <header className="mp-hero">
             <p className="mp-eyebrow">Soundtracks I listen Everyday</p>

@@ -19,6 +19,9 @@ import { startAmbientMusic } from './audio/ambient'
 import { useStore } from './store'
 import MusicOverlay from './music/MusicOverlay'
 
+// Stop redrawing the 3D scene while the gallery covers it (big smoothness win on Windows laptops).
+const PAUSE_SCENE_IN_GALLERY = true
+
 function Backdrop() {
   const setActive = useStore((s) => s.setActive)
 
@@ -191,6 +194,65 @@ export default function App() {
   // Ref points to the <section className="works"> element.
   const worksRef = useRef<HTMLElement | null>(null)
 
+  // Saving the GPU for the gallery:
+  //  - Past the home screen (About Me onward) the character no longer moves on its own, so the 3D
+  //    scene only needs redrawing while the page is actually scrolling. A moment after you stop it
+  //    goes quiet (the last picture stays on screen) and wakes up as soon as you scroll again.
+  //  - Deep inside the gallery the cards cover the scene and the camera has finished, so it stays
+  //    quiet even while you scroll, and wakes up when you scroll back up.
+  // Set PAUSE_SCENE_IN_GALLERY to false to keep the scene always drawing.
+  const [sceneIdle, setSceneIdle] = useState(false)
+  useEffect(() => {
+    if (!PAUSE_SCENE_IN_GALLERY) return
+    let raf = 0
+    let timer = 0
+
+    const evaluate = () => {
+      raf = 0
+      const el = worksRef.current
+      if (!el) return
+      const top = el.getBoundingClientRect().top
+      const done = window.innerWidth // the camera finishes after ~one screen-width of gallery scroll
+      const deep = top < -done * 1.15
+      const pastHome = window.scrollY > window.innerHeight * 0.9
+
+      if (deep) {
+        // let the camera's easing settle, then stop drawing for good
+        if (!timer) {
+          timer = window.setTimeout(() => {
+            timer = 0
+            setSceneIdle(true)
+          }, 800)
+        }
+      } else if (pastHome) {
+        // live while scrolling, quiet ~1.2 s after the last scroll
+        setSceneIdle(false)
+        window.clearTimeout(timer)
+        timer = window.setTimeout(() => {
+          timer = 0
+          setSceneIdle(true)
+        }, 1200)
+      } else {
+        window.clearTimeout(timer)
+        timer = 0
+        setSceneIdle(false)
+      }
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(evaluate)
+    }
+
+    evaluate()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      window.clearTimeout(timer)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   const { scrollYProgress: worksProgress } = useScroll({
     target: worksRef,
     offset: ['start end', 'start center'],
@@ -212,11 +274,32 @@ export default function App() {
   )
 
   // Dim the 3D scene while scrolling.
-  const scrimOpacity = useTransform(
+  const scrimBase = useTransform(
     scrollY,
     [0, 520],
     [0, 0.4],
   )
+
+  // The dark right-hand scrim and rail are made for the timeline pages. On the desktop closing
+  // "Be the world you want to have!" page there is no timeline, so they fade out there and the
+  // dark shadow in the bottom-right corner disappears. On mobile the gallery is a normal stacked
+  // page, so the overlay stays exactly as before (isMobile).
+  const isMobile = useRef(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)')
+    const update = () => {
+      isMobile.current = mq.matches
+    }
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  const { scrollYProgress: galleryEnd } = useScroll({
+    target: worksRef,
+    offset: ['start start', 'end end'],
+  })
+  const closingFade = useTransform(galleryEnd, [0.88, 1], [1, 0])
+  const scrimOpacity = useTransform([scrimBase, closingFade], ([a, b]: number[]) => (isMobile.current ? a : a * b))
 
   // Fade out the scroll prompt.
   const cueOpacity = useTransform(
@@ -238,11 +321,12 @@ export default function App() {
       : 800
 
   // Fade in the frosted side rail.
-  const railOpacity = useTransform(
+  const railBase = useTransform(
     scrollY,
     [vh * 0.5, vh * 1.1],
     [0, 1],
   )
+  const railOpacity = useTransform([railBase, closingFade], ([a, b]: number[]) => (isMobile.current ? a : a * b))
 
   // Fade out the decorative frame.
   const heroChromeOpacity = useTransform(
@@ -258,7 +342,7 @@ export default function App() {
       {/* Fixed 3D background */}
       <div className="scene-bg">
         <Canvas
-          frameloop={musicCovered ? 'never' : 'always'}
+          frameloop={musicCovered ? 'never' : sceneIdle ? 'demand' : 'always'}
           shadows={{ type: THREE.PCFShadowMap }}
           dpr={[1, 1.5]}
           camera={{

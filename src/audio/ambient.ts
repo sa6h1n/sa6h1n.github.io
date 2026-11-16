@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { AMBIENT, baseLevel, coverage, smooth } from './ambientLevel'
 import { isDucked, isTakeover, onDuckChange, setTakeover } from './preview'
-import { startAudioReactive } from './reactive'
 
 /**
  * The site's background music.
@@ -345,13 +344,6 @@ export function startAmbientMusic(): () => void {
   audio.loop = true
   audio.preload = 'none'
 
-  // the 3D scene pulses with the music (it only reads the playback position)
-  const stopReactive = startAudioReactive(
-    audio,
-    new URL(TRACK_URL, document.baseURI).href,
-    () => cur / AMBIENT.normal,
-  )
-
   const onVisibility = () => {
     if (document.hidden) {
       audio?.pause()
@@ -403,7 +395,6 @@ export function startAmbientMusic(): () => void {
     audio?.removeEventListener('error', onError)
     stopListeningForGesture()
     stopDuckWatch()
-    stopReactive()
     cancelAnimationFrame(raf)
     cancelAnimationFrame(schedRaf)
     raf = 0

@@ -21,28 +21,18 @@
   transition-property: transform, border-color, box-shadow;
 }
 
-/* ───────── Phones: portrait photos, two columns, the right one dropped a little ───────── */
+/* ───────── Phones: portrait photos, two even columns, every row perfectly level ───────── */
 @media (max-width: 640px) {
-  .wk-photo-grid { gap: 10px; padding-bottom: 24px; }
-  .wk-cell:nth-child(even) { transform: translateY(24px); }
+  .wk-photo-grid { gap: 10px; padding-bottom: 8px; }
   .wk-photo { aspect-ratio: 3 / 4; }
-  .wk-photo img { will-change: transform; }
+  /* a calmer, even backdrop behind the photos: the 3D scene's hard diagonal edge no longer shows through */
+  .wk-card { background: rgba(11, 15, 23, 0.9); }
 }
 
-/* the picture sits slightly larger than its frame and drifts inside it as you scroll */
 .wk-photo img {
-  transition: opacity 0.35s ease, filter 0.3s ease;
+  transition: opacity 0.35s ease, filter 0.3s ease, transform 0.45s ease;
   user-select: none;
   -webkit-user-drag: none;
-}
-
-/* photos far from the middle of the screen sink into the dark */
-.wk-dim {
-  position: absolute;
-  inset: 0;
-  background: #080a10;
-  pointer-events: none;
-  opacity: 0;
 }
 
 /* ───────── Music covers ───────── */
