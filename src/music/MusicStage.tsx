@@ -3,8 +3,8 @@
 // then a blue wave and the page itself open up inside it like the record's label. Closing plays it
 // backwards: the page shrinks away, then the record spins back down into the same point.
 // Used inside the site (MusicOverlay) and by the stand-alone music page (StandaloneMusic).
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { motion, useReducedMotion, usePresence } from 'framer-motion'
 import './stage.css'
 
 export interface Origin {
@@ -21,6 +21,121 @@ function coverRadius(o: Origin) {
 const circle = (r: number, o: Origin) => `circle(${r}px at ${o.x}px ${o.y}px)`
 
 const EASE = [0.76, 0, 0.24, 1] as const // slow start, fast middle, soft landing
+
+// Phones / touch screens. The first version ran the record through framer-motion, which moves things on
+// the main thread: while the phone was busy (3D scene still drawing, music page mounting) the record
+// froze and then jumped. Here the record is a native Web Animation, which the GPU compositor runs on its
+// own, so it stays smooth even when the page is busy. On top of that:
+//  - the 3D scene is paused the moment the record starts to grow (it would fight for the GPU),
+//  - the music page is only mounted once the record covers the screen (so its heavy start-up is hidden),
+//  - the record is drawn at a modest size and scaled up, instead of painting a screen-sized disc.
+const EASE_CSS = 'cubic-bezier(0.76, 0, 0.24, 1)'
+
+function LiteStage({
+  origin,
+  onCovered,
+  children,
+}: {
+  origin: Origin
+  onCovered?: () => void
+  children: ReactNode
+}) {
+  const [isPresent, safeToRemove] = usePresence()
+  const layerRef = useRef<HTMLDivElement>(null)
+  const discRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
+  const openAnim = useRef<Animation | null>(null)
+  const closing = useRef(false)
+  const [ready, setReady] = useState(false) // the page's content is mounted
+
+  const r = coverRadius(origin)
+  const size = Math.min(r * 2, 1100)
+  const finalScale = (r * 2) / size
+
+  // open: the record grows and spins (compositor-driven)
+  useEffect(() => {
+    const disc = discRef.current
+    if (!disc) return
+    onCovered?.() // freeze the 3D scene behind us right away: it only gets in the way now
+    const a = disc.animate(
+      [
+        { transform: 'scale(0) rotate(0deg)' },
+        { transform: `scale(${finalScale}) rotate(360deg)` },
+      ],
+      { duration: 900, easing: EASE_CSS, fill: 'forwards' },
+    )
+    openAnim.current = a
+    a.finished.then(() => !closing.current && setReady(true)).catch(() => {})
+    return () => a.cancel()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // the page's content is in: fade it in (two frames later, so its first paint is not in the fade)
+  useEffect(() => {
+    if (!ready) return
+    layerRef.current?.querySelector<HTMLElement>('.mp-scroll')?.focus({ preventScroll: true })
+    let id2 = 0
+    const id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => {
+        pageRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 300,
+          easing: 'ease-out',
+          fill: 'forwards',
+        })
+      })
+    })
+    return () => {
+      cancelAnimationFrame(id1)
+      cancelAnimationFrame(id2)
+    }
+  }, [ready])
+
+  // close: the page fades away, then the record plays backwards into the point it came from
+  useEffect(() => {
+    if (isPresent) return
+    closing.current = true
+    const page = pageRef.current
+    const a = openAnim.current
+    if (!a) {
+      safeToRemove?.()
+      return
+    }
+    let fade = 0
+    if (page && ready) {
+      fade = 180
+      page.animate([{ opacity: getComputedStyle(page).opacity }, { opacity: 0 }], {
+        duration: fade,
+        fill: 'forwards',
+      })
+    }
+    const t = window.setTimeout(() => {
+      a.reverse() // plays back from wherever it is; `finished` is read after this so it is the reverse run
+      a.finished.then(() => safeToRemove?.()).catch(() => safeToRemove?.())
+    }, fade)
+    return () => window.clearTimeout(t)
+  }, [isPresent, ready, safeToRemove])
+
+  return (
+    <div ref={layerRef} className="mx-layer mx-lite" role="dialog" aria-modal="true" aria-label="My Music">
+      <div
+        ref={discRef}
+        className="mx-vinyl"
+        aria-hidden="true"
+        style={{
+          left: origin.x - size / 2,
+          top: origin.y - size / 2,
+          width: size,
+          height: size,
+          transform: 'scale(0)',
+        }}
+      />
+      <div ref={pageRef} className="mx-page mx-page-lite" style={{ opacity: 0 }}>
+        <div className="mp-glow" aria-hidden="true" />
+        {ready ? children : null}
+      </div>
+    </div>
+  )
+}
 
 export default function MusicStage({
   origin,
@@ -75,39 +190,7 @@ export default function MusicStage({
     )
   }
 
-  if (lite) {
-    return (
-      <motion.div
-        ref={layerRef}
-        className="mx-layer mx-lite"
-        role="dialog"
-        aria-modal="true"
-        aria-label="My Music"
-      >
-        <motion.div
-          className="mx-vinyl"
-          aria-hidden="true"
-          style={{ left: origin.x - r, top: origin.y - r, width: r * 2, height: r * 2 }}
-          initial={{ scale: 0, rotate: 0 }}
-          animate={{ scale: 1, rotate: 360, transition: { duration: 0.9, ease: EASE } }}
-          exit={{ scale: 0, rotate: 0, transition: { duration: 0.75, ease: EASE, delay: 0.2 } }}
-          onAnimationComplete={(def) => {
-            // the record now hides the site, so the 3D scene behind it can pause
-            if (typeof def === 'object' && 'scale' in def && def.scale === 1) onCovered?.()
-          }}
-        />
-        <motion.div
-          className="mx-page mx-page-lite"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 0.35, delay: 0.7 } }}
-          exit={{ opacity: 0, transition: { duration: 0.2 } }}
-        >
-          <div className="mp-glow" aria-hidden="true" />
-          {children}
-        </motion.div>
-      </motion.div>
-    )
-  }
+  if (lite) return <LiteStage origin={origin} onCovered={onCovered}>{children}</LiteStage>
 
   return (
     <motion.div
