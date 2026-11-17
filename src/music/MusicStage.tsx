@@ -65,29 +65,32 @@ function LiteStage({
       { duration: 900, easing: EASE_CSS, fill: 'forwards' },
     )
     openAnim.current = a
-    a.finished.then(() => !closing.current && setReady(true)).catch(() => {})
-    return () => a.cancel()
+    // Mount the page as soon as the record is visibly moving (not before: the record must get its first
+    // frames out smoothly). The record runs on the GPU now, so the page starting up cannot stall it.
+    let raf = 0
+    a.ready
+      .then(() => {
+        raf = requestAnimationFrame(() => !closing.current && setReady(true))
+      })
+      .catch(() => {})
+    return () => {
+      cancelAnimationFrame(raf)
+      a.cancel()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // the page's content is in: fade it in (two frames later, so its first paint is not in the fade)
+  // the page's content is in: fade it in so it arrives just as the record finishes covering the screen
   useEffect(() => {
     if (!ready) return
     layerRef.current?.querySelector<HTMLElement>('.mp-scroll')?.focus({ preventScroll: true })
-    let id2 = 0
-    const id1 = requestAnimationFrame(() => {
-      id2 = requestAnimationFrame(() => {
-        pageRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 300,
-          easing: 'ease-out',
-          fill: 'forwards',
-        })
-      })
+    const played = Number(openAnim.current?.currentTime ?? 0)
+    pageRef.current?.animate([{ opacity: 0 }, { opacity: 1 }], {
+      delay: Math.max(0, 560 - played),
+      duration: 340,
+      easing: 'ease-out',
+      fill: 'forwards',
     })
-    return () => {
-      cancelAnimationFrame(id1)
-      cancelAnimationFrame(id2)
-    }
   }, [ready])
 
   // close: the page fades away, then the record plays backwards into the point it came from
