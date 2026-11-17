@@ -24,9 +24,8 @@
     #11141c;
   box-shadow: 0 0 0 3px #ffd9b3; /* no blurred glow: very costly on a screen-sized disc */
   backface-visibility: hidden;
-  transform: translateZ(0);
 }
-.mx-lite { --tile-delay: 800ms; } /* phones: the page fades in a little later */
+.mx-lite { --tile-delay: 120ms; } /* phones: the page is mounted only once the record covers the screen */
 .mx-page-lite { will-change: opacity; }
 .mx-wave-blue { background: linear-gradient(135deg, #6486c8, #4a6aa8 60%, #3b5890); }
 .mx-page {
