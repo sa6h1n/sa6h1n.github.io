@@ -3,12 +3,12 @@
    Loaded after styles.css / enhance.css, so it can refine their photo rules.
    ========================================================================== */
 
-/* ───────── Photo wall: the original square 3 × 2 grid ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Photo wall: the original square 3 Ã— 2 grid â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .wk-cell { position: relative; min-width: 0; }
 
 /* the layer that scroll depth moves (translate only, so photos stay sharp) */
 .wk-depth { width: 100%; }
-/* first time it appears: it fades in (opacity only — a blur on all 24 photos at once was costly) */
+/* first time it appears: it fades in (opacity only â€” a blur on all 24 photos at once was costly) */
 .wk-depth.reveal { opacity: 0; }
 .wk-depth.reveal.is-in {
   opacity: 1;
@@ -21,7 +21,7 @@
   transition-property: transform, border-color, box-shadow;
 }
 
-/* ───────── Phones: portrait photos, two even columns, every row perfectly level ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Phones: portrait photos, two even columns, every row perfectly level â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 640px) {
   .wk-photo-grid { gap: 10px; padding-bottom: 8px; }
   .wk-photo { aspect-ratio: 3 / 4; }
@@ -35,11 +35,11 @@
   -webkit-user-drag: none;
 }
 
-/* ───────── Music covers ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Music covers â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .wk-photo.has-track { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .wk-photo.has-track:focus-visible { outline: 2px solid #ffd9b3; outline-offset: 3px; }
 
-/* a small ♪ says "this one plays" without adding clutter */
+/* a small â™ª says "this one plays" without adding clutter */
 .wk-note {
   position: absolute;
   top: 8px;
@@ -61,6 +61,18 @@
 @keyframes wkNote {
   0%, 100% { transform: translateY(0); opacity: 0.8; }
   50% { transform: translateY(-2px); opacity: 1; }
+}
+
+/* Hover glow: the same soft blue glow the music-page tiles get, on one photo at a time.
+   - only while hovering with a real pointer (nothing on phones, so no stuck glow after a tap)
+   - a plain box-shadow on the single hovered photo: nothing is drawn at rest, so 24 photos cost nothing
+   - it sits before the "is-playing" rule below, so a playing cover keeps its warm glow */
+@media (hover: hover) and (pointer: fine) {
+  .wk-cell:hover { z-index: 3; } /* lift the hovered photo's glow above its neighbours */
+  .wk-photo:hover {
+    border-color: rgba(138, 170, 238, 0.75);
+    box-shadow: 0 18px 48px rgba(74, 106, 168, 0.5), 0 0 0 1px rgba(138, 170, 238, 0.25);
+  }
 }
 
 /* the cover that is playing glows; the others step back */
@@ -89,7 +101,7 @@
   color: #f4f1ea;
   pointer-events: none;
 }
-/* while a song plays: a small card — "NOW PLAYING", the song, the artist */
+/* while a song plays: a small card â€” "NOW PLAYING", the song, the artist */
 .wk-now.is-song { gap: 11px; padding: 10px 14px 10px 12px; border-radius: 14px; }
 .wk-now.is-song .wk-eq { height: 18px; }
 .wk-now-copy { display: grid; gap: 2px; min-width: 0; }
